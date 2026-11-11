@@ -3,6 +3,7 @@ import { assertNoLiveKeys } from './domain/keys';
 import type { Env, Vars } from './env';
 import { AppError, ERROR_COPY } from './errors';
 import { securityHeaders } from './middleware/headers';
+import { bugsMiddleware } from './middleware/bugs';
 import { originCheck } from './middleware/origin';
 import { sessionMiddleware } from './middleware/session';
 import { admin } from './routes/admin';
@@ -24,11 +25,7 @@ export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
   });
   app.use('*', originCheck);
 
-  // Task 10 replaces this with the bug set parsed from the cookie; empty until then.
-  app.use('*', async (c, next) => {
-    c.set('bugs', new Set<string>());
-    await next();
-  });
+  app.use('*', bugsMiddleware);
   app.use('*', sessionMiddleware);
 
   app.route('/__demo', demo);

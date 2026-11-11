@@ -24,9 +24,9 @@ slots.get('/slots', async (c) => {
   }
   const at = now(c.env);
   const busy = await busyFor(c.env.DB, date, at);
-  // checkEnd is true here; the bug variants (Task 10) read c.var.bugs at this point.
+  const checkEnd = !c.var.bugs.has('booking-past-closing'); // BUG:booking-past-closing (start time only)
   const body: SlotsResponse = {
-    slots: computeSlots({ date, durationMin: service.duration_min, stylistIds, busy, now: at, checkEnd: true }),
+    slots: computeSlots({ date, durationMin: service.duration_min, stylistIds, busy, now: at, checkEnd }),
   };
   return c.json(body);
 });

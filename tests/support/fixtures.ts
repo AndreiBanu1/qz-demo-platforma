@@ -5,6 +5,8 @@ export type Client = {
   email: string;
   password: string;
   name: string;
+  /** The `qz_session=...` pair, for helpers that build another context for the same user. */
+  cookie: string;
   /** An isolated request context that carries this user's session cookie. */
   request: APIRequestContext;
 };
@@ -36,7 +38,7 @@ async function loginClient(baseURL: string, email: string, password: string, nam
     baseURL,
     extraHTTPHeaders: { Origin: origin, Cookie: cookie },
   });
-  return { email, password, name, request };
+  return { email, password, name, cookie, request };
 }
 
 export const test = base.extend<Fixtures>({

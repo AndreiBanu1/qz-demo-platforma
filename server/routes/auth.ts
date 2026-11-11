@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
 import { isReservedEmail } from '../auth/email';
+import { enumerationError, slowLoginDelay } from '../bugs/paths';
 import { hashPassword, iterationsFor, verifyPassword } from '../auth/password';
 import { countFailures, recordFailure } from '../db/attempts';
 import { createSession, deleteSession } from '../db/sessions';
@@ -55,11 +56,14 @@ auth.post('/auth/login', async (c) => {
     throw new AppError(429, 'TOO_MANY_ATTEMPTS');
   }
 
+  if (c.var.bugs.has('slow-login')) await slowLoginDelay(); // BUG:slow-login
+
   const row = await getUserByEmail(c.env.DB, body.email);
   const dummy = `pbkdf2-sha256$${iterationsFor(c.env)}$${DUMMY_SALT}$${DUMMY_KEY}`;
   const ok = await verifyPassword(body.password, row?.password_hash ?? dummy);
   if (!row || !ok) {
     await recordFailure(c.env.DB, body.email, ip, at);
+    if (c.var.bugs.has('login-enumeration')) return c.json(enumerationError(!!row), 401); // BUG:login-enumeration
     throw new AppError(401, 'INVALID_CREDENTIALS');
   }
 

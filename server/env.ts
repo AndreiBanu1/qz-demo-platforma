@@ -1,3 +1,5 @@
+import type { BugId } from './bugs/registry';
+
 export type Env = {
   DB: D1Database;
   ASSETS: Fetcher;
@@ -16,5 +18,5 @@ export type SessionUser = { id: string; email: string; name: string; role: 'clie
 /** Hono context variables. */
 export type Vars = {
   user: SessionUser | null;
-  bugs: Set<string>;
+  bugs: Set<BugId>;
 };

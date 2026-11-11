@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
+import { getBookingAnyOwner, leakyStartLookup } from '../bugs/paths';
 import {
   cancelBookingIfStatus,
   getBooking,
@@ -42,7 +44,13 @@ export const bookings = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 bookings.post('/bookings', async (c) => {
   const user = requireUser(c);
-  const body = await parseBody(c, createBookingSchema);
+  // BUG:leaky-errors: with the bug on, `start` skips its datetime check and a malformed one reaches the database.
+  const leaky = c.var.bugs.has('leaky-errors');
+  const body = await parseBody(c, leaky ? createBookingSchema.extend({ start: z.string() }) : createBookingSchema);
+  if (leaky && !z.iso.datetime({ offset: true }).safeParse(body.start).success) {
+    const failure = await leakyStartLookup(c.env.DB, body.stylistId, body.start); // BUG:leaky-errors
+    if (failure) return failure;
+  }
   const [service, stylist] = await Promise.all([
     getService(c.env.DB, body.serviceId),
     getStylist(c.env.DB, body.stylistId),
@@ -55,8 +63,8 @@ bookings.post('/bookings', async (c) => {
   if (start.getTime() % 60_000 !== 0 || localParts(start).minutes % STEP_MIN !== 0) {
     throw new AppError(400, 'VALIDATION');
   }
-  // checkEnd is true here; the bug variants (Task 10) read c.var.bugs at this point.
-  if (!fitsInDay(start, service.duration_min, true)) throw new AppError(400, 'VALIDATION');
+  const checkEnd = !c.var.bugs.has('booking-past-closing'); // BUG:booking-past-closing (start time only)
+  if (!fitsInDay(start, service.duration_min, checkEnd)) throw new AppError(400, 'VALIDATION');
 
   const id = crypto.randomUUID();
   const deposit = depositLei(service.price_lei);
@@ -93,9 +101,10 @@ bookings.get('/bookings', async (c) => {
 
 bookings.get('/bookings/:id', async (c) => {
   const user = requireUser(c);
-  const row = await getBooking(c.env.DB, c.req.param('id'));
-  // 404 for someone else's booking too, so ids cannot be probed. The idor-booking variant (Task 10) hooks in here.
-  if (!row || (row.user_id !== user.id && user.role !== 'admin')) throw new AppError(404, 'NOT_FOUND');
+  // BUG:idor-booking returns the booking whoever owns it; clean mode is 404 for someone else's, so ids cannot be probed.
+  const idor = c.var.bugs.has('idor-booking');
+  const row = idor ? await getBookingAnyOwner(c.env.DB, c.req.param('id')) : await getBooking(c.env.DB, c.req.param('id'));
+  if (!row || (!idor && row.user_id !== user.id && user.role !== 'admin')) throw new AppError(404, 'NOT_FOUND');
   return c.json(toBookingDto(row));
 });
 
