@@ -1,8 +1,11 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { z } from 'zod';
 import { now } from '../domain/time';
 import type { Env, Vars } from '../env';
+import { deleteUserByEmail } from '../db/users';
 import { AppError } from '../errors';
 import { resetDatabase } from '../seed/reset';
+import { parseBody } from '../validate';
 
 /** Compares SHA-256 digests in constant time, so neither length nor content leaks. */
 async function tokensMatch(a: string, b: string): Promise<boolean> {
@@ -20,11 +23,23 @@ export const demo = new Hono<{ Bindings: Env; Variables: Vars }>();
 
 demo.get('/health', (c) => c.json({ ok: true }));
 
-demo.post('/reset', async (c) => {
+async function requireToken(c: Context<{ Bindings: Env; Variables: Vars }>): Promise<void> {
   const token = c.req.header('X-Demo-Reset-Token');
   if (!token || !c.env.DEMO_RESET_TOKEN || !(await tokensMatch(token, c.env.DEMO_RESET_TOKEN))) {
     throw new AppError(404, 'NOT_FOUND');
   }
+}
+
+demo.post('/reset', async (c) => {
+  await requireToken(c);
   await resetDatabase(c.env.DB, now(c.env));
+  return c.body(null, 204);
+});
+
+/** Removes one user and leaves their sessions in place, so a test can prove a dangling session gets 401. */
+demo.post('/fixtures/delete-user', async (c) => {
+  await requireToken(c);
+  const { email } = await parseBody(c, z.object({ email: z.string().min(1) }));
+  await deleteUserByEmail(c.env.DB, email.trim().toLowerCase());
   return c.body(null, 204);
 });

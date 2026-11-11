@@ -19,7 +19,7 @@ export async function getUserById(db: D1Database, id: string): Promise<UserRow |
 export async function insertUser(db: D1Database, u: UserRow): Promise<boolean> {
   const r = await db
     .prepare(
-      'INSERT OR IGNORE INTO users (id,email,name,role,password_hash,created_at) VALUES (?1,?2,?3,?4,?5,?6)',
+      'INSERT INTO users (id,email,name,role,password_hash,created_at) VALUES (?1,?2,?3,?4,?5,?6) ON CONFLICT(email) DO NOTHING',
     )
     .bind(u.id, u.email, u.name, u.role, u.password_hash, u.created_at)
     .run();

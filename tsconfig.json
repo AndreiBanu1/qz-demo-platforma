@@ -14,5 +14,5 @@
     "isolatedModules": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["server", "web", "tests", "config", "scripts", "*.ts"]
+  "include": ["server", "shared", "web", "tests", "config", "scripts", "*.ts"]
 }

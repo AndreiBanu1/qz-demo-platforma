@@ -4,6 +4,8 @@ import type { Env, Vars } from './env';
 import { AppError, ERROR_COPY } from './errors';
 import { securityHeaders } from './middleware/headers';
 import { originCheck } from './middleware/origin';
+import { sessionMiddleware } from './middleware/session';
+import { auth } from './routes/auth';
 import { demo } from './routes/demo';
 
 export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
@@ -17,7 +19,10 @@ export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
   });
   app.use('*', originCheck);
 
+  app.use('*', sessionMiddleware);
+
   app.route('/__demo', demo);
+  app.route('/api', auth);
 
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: ERROR_COPY.NOT_FOUND } }, 404));
 
