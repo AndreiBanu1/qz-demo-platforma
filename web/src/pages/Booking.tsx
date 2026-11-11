@@ -8,7 +8,7 @@ import { ErrorText, useLoad, useTitle } from '../ui';
 
 const ANY = 'any';
 
-/** A radio with its label. BUG:a11y-gap drops the label and leaves bare text next to the input. */
+/** A radio with its label. With the a11y-gap bug on, it drops the label and leaves bare text next to the input. */
 function Choice({ name, value, checked, onChange, broken, children }: {
   name: string;
   value: string;
@@ -117,7 +117,8 @@ export function Booking() {
 
   return (
     <div className={broken ? 'focus-off' : undefined}>
-      {/* BUG:a11y-gap: the focus-off class removes every focus outline inside the booking page. */}
+      {/* The focus-off class removes every focus outline inside the booking page. */}
+      {/* BUG:a11y-gap */}
       <h1 className="text-3xl font-bold text-green-950">Programare</h1>
       <ErrorText>{services.error ?? stylists.error}</ErrorText>
 
@@ -178,7 +179,8 @@ export function Booking() {
                   onClick={() => update({ t: s.start })}
                   className={`cursor-pointer rounded-md border-2 border-green-800 px-3 py-2 text-center font-semibold ${start === s.start ? 'bg-green-800 text-white' : 'bg-white text-green-900'}`}
                 >
-                  {/* BUG:a11y-gap: a clickable div with no role, no tabIndex, no keyboard support. */}
+                  {/* A clickable div with no role, no tabIndex, no keyboard support. */}
+                  {/* BUG:a11y-gap */}
                   {hhmm(s.start)}
                 </div>
               ) : (
