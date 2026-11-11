@@ -1,11 +1,9 @@
-import { Hono } from 'hono';
+import { createApp } from './app';
 import { now } from './domain/time';
 import type { Env } from './env';
 import { resetDatabase } from './seed/reset';
 
-const app = new Hono<{ Bindings: Env }>();
-
-app.get('/__demo/health', (c) => c.json({ ok: true }));
+const app = createApp();
 
 export default {
   fetch: app.fetch,
