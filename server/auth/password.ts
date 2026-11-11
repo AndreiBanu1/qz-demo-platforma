@@ -1,5 +1,7 @@
 const KEY_BYTES = 32;
 const SALT_BYTES = 16;
+/** The Workers runtime refuses PBKDF2 above 100000 iterations. */
+export const MAX_ITERATIONS = 100_000;
 
 function toBase64(bytes: Uint8Array): string {
   let s = '';
@@ -8,7 +10,8 @@ function toBase64(bytes: Uint8Array): string {
 }
 
 /** Derives a PBKDF2-SHA256 key and returns `pbkdf2-sha256$<iterations>$<saltB64>$<hashB64>`. */
-export async function hashPassword(pw: string, iterations: number): Promise<string> {
+export async function hashPassword(pw: string, requested: number): Promise<string> {
+  const iterations = Math.min(requested, MAX_ITERATIONS);
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, KEY_BYTES * 8);
@@ -36,7 +39,7 @@ function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
 export async function verifyPassword(pw: string, stored: string): Promise<boolean> {
   const [scheme, iterStr, saltB64, hashB64] = stored.split('$');
   const iterations = Number(iterStr);
-  if (scheme !== 'pbkdf2-sha256' || !Number.isInteger(iterations) || iterations < 1 || !saltB64 || !hashB64) {
+  if (scheme !== 'pbkdf2-sha256' || !Number.isInteger(iterations) || iterations < 1 || iterations > MAX_ITERATIONS || !saltB64 || !hashB64) {
     return false;
   }
   const salt = fromBase64(saltB64);
@@ -47,8 +50,8 @@ export async function verifyPassword(pw: string, stored: string): Promise<boolea
   return constantTimeEqual(new Uint8Array(bits), expected);
 }
 
-/** Iteration count for new hashes: `PBKDF2_ITERATIONS`, default 20000 (Task 13 measures the real value). */
+/** Iteration count for new hashes: `PBKDF2_ITERATIONS`, default 20000, never above MAX_ITERATIONS (Task 13 measures the real value). */
 export function iterationsFor(env: { PBKDF2_ITERATIONS?: string }): number {
   const n = Number(env.PBKDF2_ITERATIONS);
-  return Number.isInteger(n) && n > 0 ? n : 20000;
+  return Number.isInteger(n) && n > 0 ? Math.min(n, MAX_ITERATIONS) : 20000;
 }
