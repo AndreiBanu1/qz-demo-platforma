@@ -8,7 +8,7 @@ import { simulatedPay } from '../payments/simulated';
 import { createStripeProvider, handleStripeEvent, makeStripeClient, verifyStripeEvent } from '../payments/stripe';
 import { parseBody } from '../validate';
 
-const STRIPE_HOLD_MS = 30 * 60_000;
+const STRIPE_HOLD_MS = 31 * 60_000;
 
 export const payments = new Hono<{ Bindings: Env; Variables: Vars }>();
 

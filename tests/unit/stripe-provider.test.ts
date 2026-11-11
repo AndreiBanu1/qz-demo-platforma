@@ -16,7 +16,7 @@ const booking: BookingRow = {
   created_at: '2026-12-07T08:00:00.000Z',
 };
 
-const EXPIRES = new Date('2026-12-07T08:30:00.000Z');
+const EXPIRES = new Date('2026-12-07T08:31:00.000Z');
 
 function fakeClient(url: string | null = 'https://checkout.stripe.test/c/pay/cs_test_1') {
   const create = vi.fn<StripeLike['checkout']['sessions']['create']>(async () => ({ id: 'cs_test_1', url }));
@@ -33,7 +33,7 @@ describe('createStripeProvider', () => {
     const params = create.mock.calls[0][0];
     expect(params).toMatchObject({
       mode: 'payment',
-      expires_at: 1796632200, // 2026-12-07T08:30:00Z as unix seconds
+      expires_at: 1796632260, // 2026-12-07T08:31:00Z as unix seconds
       metadata: { bookingId: 'b-1' },
       success_url: 'https://demo.example/confirmare/b-1',
       cancel_url: 'https://demo.example/avans/b-1',

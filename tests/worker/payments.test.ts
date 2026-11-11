@@ -70,7 +70,7 @@ describe('conditional status changes', () => {
 
 describe('extendHoldIfPending', () => {
   test('moves the hold of a live pending booking, but not an expired, confirmed or cancelled one', async () => {
-    const until = new Date(now.getTime() + 30 * 60_000);
+    const until = new Date(now.getTime() + 31 * 60_000);
     const live = await pending();
     expect(await extendHoldIfPending(env.DB, live, now, until)).toBe(true);
     expect((await getBooking(env.DB, live))?.hold_until).toBe(until.toISOString());
