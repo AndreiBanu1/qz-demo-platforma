@@ -1,7 +1,15 @@
 import { Hono } from 'hono';
+import { now } from './domain/time';
+import type { Env } from './env';
+import { resetDatabase } from './seed/reset';
 
-const app = new Hono();
+const app = new Hono<{ Bindings: Env }>();
 
 app.get('/__demo/health', (c) => c.json({ ok: true }));
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(resetDatabase(env.DB, now(env)));
+  },
+};
