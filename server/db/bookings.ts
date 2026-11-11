@@ -1,5 +1,5 @@
 import type { Busy } from '../domain/slots';
-import { fromLocal } from '../domain/time';
+import { localDayWindow } from '../domain/time';
 
 export type BookingStatus = 'pending_payment' | 'confirmed' | 'cancelled';
 
@@ -73,15 +73,11 @@ export async function listAllBookings(db: D1Database): Promise<BookingRow[]> {
   return r.results;
 }
 
-function nextDay(date: string): string {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
-}
-
 /** Busy intervals for one Europe/Bucharest local day (YYYY-MM-DD): active bookings plus blocks. */
 export async function busyFor(db: D1Database, date: string, now: Date): Promise<Busy[]> {
-  const from = fromLocal(date, 0).toISOString();
-  const to = fromLocal(nextDay(date), 0).toISOString();
+  const window = localDayWindow(date);
+  const from = window.from.toISOString();
+  const to = window.to.toISOString();
   const [bookings, blocks] = await db.batch([
     db
       .prepare(
@@ -161,4 +157,34 @@ export async function extendHoldIfPending(db: D1Database, id: string, now: Date,
     .bind(id, now.toISOString(), until.toISOString())
     .run();
   return r.meta.changes === 1;
+}
+
+export type BookingWithClientRow = BookingRow & { client_name: string; client_email: string };
+
+const WITH_CLIENT = `SELECT b.*, u.name AS client_name, u.email AS client_email
+  FROM bookings b JOIN users u ON u.id = b.user_id`;
+
+/** Every booking with its client's name and email (never the password hash). */
+export async function listAllBookingsWithClient(db: D1Database): Promise<BookingWithClientRow[]> {
+  const r = await db.prepare(`${WITH_CLIENT} ORDER BY b.start_at`).all<BookingWithClientRow>();
+  return r.results;
+}
+
+/** Active bookings (confirmed, or pending with a live hold) overlapping [from, to), with client name and email. */
+export async function listActiveBookingsBetween(
+  db: D1Database,
+  from: Date,
+  to: Date,
+  now: Date,
+): Promise<BookingWithClientRow[]> {
+  const r = await db
+    .prepare(
+      `${WITH_CLIENT}
+       WHERE b.start_at < ?2 AND b.end_at > ?1
+         AND (b.status='confirmed' OR (b.status='pending_payment' AND b.hold_until > ?3))
+       ORDER BY b.start_at`,
+    )
+    .bind(from.toISOString(), to.toISOString(), now.toISOString())
+    .all<BookingWithClientRow>();
+  return r.results;
 }

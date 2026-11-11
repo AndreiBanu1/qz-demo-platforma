@@ -5,6 +5,7 @@ import { AppError, ERROR_COPY } from './errors';
 import { securityHeaders } from './middleware/headers';
 import { originCheck } from './middleware/origin';
 import { sessionMiddleware } from './middleware/session';
+import { admin } from './routes/admin';
 import { auth } from './routes/auth';
 import { bookings } from './routes/bookings';
 import { catalog } from './routes/catalog';
@@ -36,6 +37,7 @@ export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
   app.route('/api', slots);
   app.route('/api', bookings);
   app.route('/api', payments);
+  app.route('/api', admin);
 
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: ERROR_COPY.NOT_FOUND } }, 404));
 

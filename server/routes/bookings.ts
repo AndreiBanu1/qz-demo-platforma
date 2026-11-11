@@ -1,4 +1,4 @@
-import { Hono, type Context } from 'hono';
+import { Hono } from 'hono';
 import {
   cancelBookingIfStatus,
   getBooking,
@@ -10,8 +10,9 @@ import { getService, getStylist } from '../db/catalog';
 import { depositLei } from '../domain/deposit';
 import { fitsInDay, STEP_MIN } from '../domain/slots';
 import { localParts, now } from '../domain/time';
-import type { Env, SessionUser, Vars } from '../env';
+import type { Env, Vars } from '../env';
 import { AppError } from '../errors';
+import { requireUser } from '../middleware/guards';
 import { parseBody } from '../validate';
 import {
   createBookingSchema,
@@ -22,8 +23,6 @@ import {
 
 const HOLD_MS = 10 * 60_000;
 const CANCEL_NOTICE_MS = 24 * 60 * 60_000;
-
-type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
 
 export function toBookingDto(r: BookingRow): BookingDto {
   return {
@@ -37,12 +36,6 @@ export function toBookingDto(r: BookingRow): BookingDto {
     holdUntil: r.hold_until,
     refunded: r.refunded === 1,
   };
-}
-
-function requireUser(c: Ctx): SessionUser {
-  const user = c.var.user;
-  if (!user) throw new AppError(401, 'UNAUTHENTICATED');
-  return user;
 }
 
 export const bookings = new Hono<{ Bindings: Env; Variables: Vars }>();

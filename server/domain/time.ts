@@ -51,3 +51,10 @@ export function fromLocal(date: string, minutes: number): Date {
   guess = asUtc - offsetMinutes(new Date(guess)) * 60_000;
   return new Date(guess);
 }
+
+/** The UTC bounds [from, to) of one Europe/Bucharest local day (YYYY-MM-DD). */
+export function localDayWindow(date: string): { from: Date; to: Date } {
+  const [y, m, d] = date.split('-').map(Number);
+  const next = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  return { from: fromLocal(date, 0), to: fromLocal(next, 0) };
+}

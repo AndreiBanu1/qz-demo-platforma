@@ -43,6 +43,14 @@ export const createBookingSchema = z.object({
   start: z.iso.datetime({ offset: true }),
 });
 
+export const calendarQuerySchema = z.object({ date: calendarDate });
+
+export const createBlockSchema = z.object({
+  stylistId: z.string().min(1).max(64),
+  start: z.iso.datetime({ offset: true }),
+  end: z.iso.datetime({ offset: true }),
+});
+
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 export type ServiceDto = { id: string; name: string; durationMin: number; priceLei: number };
@@ -68,3 +76,7 @@ export type CreateBookingResponse = {
   holdUntil: string;
 };
 export type CancelBookingResponse = { status: 'cancelled'; refunded: boolean };
+
+export type AdminBookingDto = BookingDto & { client: { name: string; email: string } };
+export type BlockDto = { id: string; stylistId: string; start: string; end: string };
+export type CalendarResponse = { stylists: StylistDto[]; bookings: AdminBookingDto[]; blocks: BlockDto[] };
