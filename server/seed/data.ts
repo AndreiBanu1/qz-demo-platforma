@@ -1,3 +1,5 @@
+import { DEMO_ACCOUNTS } from '../../shared/demo-accounts';
+
 export type SeedService = { id: string; name: string; durationMin: number; priceLei: number };
 export type SeedStylist = { id: string; name: string; avatar: string };
 export type SeedAccount = {
@@ -5,7 +7,7 @@ export type SeedAccount = {
   email: string;
   name: string;
   role: 'client' | 'admin';
-  /** Public demo password, printed on the login page. */
+  /** Public demo password, printed on the login page (kept in shared/demo-accounts.ts). */
   password: string;
   /** Precomputed with scripts/hash-password.ts (PBKDF2-SHA256, 20000 iterations). Nothing hashes at reset time. */
   passwordHash: string;
@@ -27,32 +29,11 @@ export const STYLISTS: SeedStylist[] = [
   { id: 'stylist-lucian', name: 'Lucian', avatar: '/avatars/lucian.svg' },
 ];
 
-export const SEED_ACCOUNTS: SeedAccount[] = [
-  {
-    id: 'user-admin',
-    email: 'admin@bucla-verde.test',
-    name: 'Administrator Demo',
-    role: 'admin',
-    password: 'Frunza-Admin-2026',
-    passwordHash:
-      'pbkdf2-sha256$20000$h2OKKl9xyFrcio+9LckwBQ==$t7CLvplMgisafla3ZTG6Yjtjz/dYZyr/02GMnMCxOIQ=',
-  },
-  {
-    id: 'user-ana',
-    email: 'ana@bucla-verde.test',
-    name: 'Ana Demo',
-    role: 'client',
-    password: 'Ana-Salon-2026',
-    passwordHash:
-      'pbkdf2-sha256$20000$200OECkD2xYu9O6sHg3MLA==$99Z1pC9WbK/zqabSpyFT2fxrM4fnPZZXzuKdWKpcCdc=',
-  },
-  {
-    id: 'user-mihai',
-    email: 'mihai@bucla-verde.test',
-    name: 'Mihai Demo',
-    role: 'client',
-    password: 'Mihai-Salon-2026',
-    passwordHash:
-      'pbkdf2-sha256$20000$uvfQiavNao+WoVxqstS/4w==$gcaF6N0aMCbdDppjCs9sE9hK8Kg60lQDZWjcJvyKc+A=',
-  },
-];
+/** Precomputed with scripts/hash-password.ts (PBKDF2-SHA256, 20000 iterations). Nothing hashes at reset time. */
+const PASSWORD_HASHES: Record<string, string> = {
+  'user-admin': 'pbkdf2-sha256$20000$h2OKKl9xyFrcio+9LckwBQ==$t7CLvplMgisafla3ZTG6Yjtjz/dYZyr/02GMnMCxOIQ=',
+  'user-ana': 'pbkdf2-sha256$20000$200OECkD2xYu9O6sHg3MLA==$99Z1pC9WbK/zqabSpyFT2fxrM4fnPZZXzuKdWKpcCdc=',
+  'user-mihai': 'pbkdf2-sha256$20000$uvfQiavNao+WoVxqstS/4w==$gcaF6N0aMCbdDppjCs9sE9hK8Kg60lQDZWjcJvyKc+A=',
+};
+
+export const SEED_ACCOUNTS: SeedAccount[] = DEMO_ACCOUNTS.map((a) => ({ ...a, passwordHash: PASSWORD_HASHES[a.id] }));

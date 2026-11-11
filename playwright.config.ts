@@ -22,5 +22,11 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       testIgnore: ['**/tests/unit/**', '**/tests/worker/**', '**/tests/bug-catcher/**'],
     },
+    {
+      name: 'iphone-15',
+      // The device preset defaults to WebKit; the project runs on Chromium.
+      use: { ...devices['iPhone 15'], browserName: 'chromium' },
+      testMatch: ['**/tests/e2e/**/*.spec.ts', '**/tests/a11y/**/*.spec.ts'],
+    },
   ],
 });
