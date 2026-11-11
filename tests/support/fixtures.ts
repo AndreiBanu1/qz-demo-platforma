@@ -41,19 +41,24 @@ async function loginClient(baseURL: string, email: string, password: string, nam
   return { email, password, name, cookie, request };
 }
 
+/** Signs up and logs in a fresh `user-<uuid>@exemplu.test` account. The caller disposes `client.request`. */
+export async function createClient(baseURL: string): Promise<Client> {
+  const origin = new URL(baseURL).origin;
+  const email = `user-${crypto.randomUUID()}@exemplu.test`;
+  const password = 'parola-de-test-1';
+  const name = 'Client Test';
+  const anon = await pwRequest.newContext({ baseURL, extraHTTPHeaders: { Origin: origin } });
+  const res = await anon.post('/api/auth/signup', { data: { name, email, password } });
+  await anon.dispose();
+  if (res.status() !== 201) throw new Error(`sign-up failed: ${res.status()}`);
+  return loginClient(baseURL, email, password, name);
+}
+
 export const test = base.extend<Fixtures>({
   newClient: async ({ baseURL }, use) => {
     const made: Client[] = [];
     await use(async () => {
-      const origin = new URL(baseURL!).origin;
-      const email = `user-${crypto.randomUUID()}@exemplu.test`;
-      const password = 'parola-de-test-1';
-      const name = 'Client Test';
-      const anon = await pwRequest.newContext({ baseURL: baseURL!, extraHTTPHeaders: { Origin: origin } });
-      const res = await anon.post('/api/auth/signup', { data: { name, email, password } });
-      await anon.dispose();
-      if (res.status() !== 201) throw new Error(`sign-up failed: ${res.status()}`);
-      const client = await loginClient(baseURL!, email, password, name);
+      const client = await createClient(baseURL!);
       made.push(client);
       return client;
     });

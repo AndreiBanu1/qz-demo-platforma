@@ -28,5 +28,11 @@ export default defineConfig({
       use: { ...devices['iPhone 15'], browserName: 'chromium' },
       testMatch: ['**/tests/e2e/**/*.spec.ts', '**/tests/a11y/**/*.spec.ts'],
     },
+    {
+      // Reruns each catching check with one planted bug on; every test is an expected failure.
+      name: 'bug-catcher',
+      testDir: 'tests/bug-catcher',
+      use: { ...devices['Desktop Chrome'] },
+    },
   ],
 });
