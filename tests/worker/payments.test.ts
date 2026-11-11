@@ -3,6 +3,7 @@ import { describe, expect, test } from 'vitest';
 import {
   cancelBookingIfStatus,
   confirmBookingIfPending,
+  extendHoldIfPending,
   getBooking,
   insertBookingIfFree,
   type NewBooking,
@@ -30,9 +31,12 @@ async function pending(holdMs = 10 * 60_000): Promise<string> {
   return b.id;
 }
 
-const completed = (bookingId: string, sessionId: string) => ({
+// The pending() bookings have a 20 lei deposit.
+const completed = (bookingId: string, sessionId: string, extra: Record<string, unknown> = {}) => ({
   type: 'checkout.session.completed',
-  data: { object: { id: sessionId, payment_status: 'paid', metadata: { bookingId } } },
+  data: {
+    object: { id: sessionId, payment_status: 'paid', amount_total: 2000, currency: 'ron', metadata: { bookingId }, ...extra },
+  },
 });
 
 describe('conditional status changes', () => {
@@ -64,6 +68,22 @@ describe('conditional status changes', () => {
   });
 });
 
+describe('extendHoldIfPending', () => {
+  test('moves the hold of a live pending booking, but not an expired, confirmed or cancelled one', async () => {
+    const until = new Date(now.getTime() + 30 * 60_000);
+    const live = await pending();
+    expect(await extendHoldIfPending(env.DB, live, now, until)).toBe(true);
+    expect((await getBooking(env.DB, live))?.hold_until).toBe(until.toISOString());
+    expect(await extendHoldIfPending(env.DB, await pending(-1000), now, until)).toBe(false);
+    const confirmed = await pending();
+    await confirmBookingIfPending(env.DB, confirmed, now);
+    expect(await extendHoldIfPending(env.DB, confirmed, now, until)).toBe(false);
+    const cancelled = await pending();
+    await cancelBookingIfStatus(env.DB, cancelled, 'pending_payment', false);
+    expect(await extendHoldIfPending(env.DB, cancelled, now, until)).toBe(false);
+  });
+});
+
 describe('payments', () => {
   test('a duplicate external_id is ignored, but other constraint errors still raise', async () => {
     const p = { booking_id: 'b', provider: 'stripe', status: 'succeeded', card_last4: null, external_id: 'cs_dup' };
@@ -84,6 +104,17 @@ describe('payments', () => {
 });
 
 describe('handleStripeEvent', () => {
+  test.each([
+    ['a wrong amount', { amount_total: 100 }],
+    ['a missing amount', { amount_total: undefined }],
+    ['a wrong currency', { currency: 'usd' }],
+  ])('%s is recorded as paid_not_confirmed and leaves the booking alone', async (_name, extra) => {
+    const id = await pending();
+    await handleStripeEvent(env.DB, completed(id, `cs_${crypto.randomUUID()}`, extra), now);
+    expect((await getBooking(env.DB, id))?.status).toBe('pending_payment');
+    expect((await listPaymentsForBooking(env.DB, id))[0].status).toBe('paid_not_confirmed');
+  });
+
   test('confirms once and records one payment for a replayed event', async () => {
     const id = await pending();
     await handleStripeEvent(env.DB, completed(id, 'cs_replay'), now);

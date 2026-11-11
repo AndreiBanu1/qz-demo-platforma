@@ -16,6 +16,8 @@ const booking: BookingRow = {
   created_at: '2026-12-07T08:00:00.000Z',
 };
 
+const EXPIRES = new Date('2026-12-07T08:30:00.000Z');
+
 function fakeClient(url: string | null = 'https://checkout.stripe.test/c/pay/cs_test_1') {
   const create = vi.fn<StripeLike['checkout']['sessions']['create']>(async () => ({ id: 'cs_test_1', url }));
   const client: StripeLike = { checkout: { sessions: { create } } };
@@ -25,12 +27,13 @@ function fakeClient(url: string | null = 'https://checkout.stripe.test/c/pay/cs_
 describe('createStripeProvider', () => {
   test('creates a payment-mode Checkout Session in ron for the deposit', async () => {
     const { client, create } = fakeClient();
-    const out = await createStripeProvider(client).start(booking, 'https://demo.example');
+    const out = await createStripeProvider(client, EXPIRES).start(booking, 'https://demo.example');
     expect(out).toEqual({ redirectUrl: 'https://checkout.stripe.test/c/pay/cs_test_1' });
     expect(create).toHaveBeenCalledTimes(1);
     const params = create.mock.calls[0][0];
     expect(params).toMatchObject({
       mode: 'payment',
+      expires_at: 1796632200, // 2026-12-07T08:30:00Z as unix seconds
       metadata: { bookingId: 'b-1' },
       success_url: 'https://demo.example/confirmare/b-1',
       cancel_url: 'https://demo.example/avans/b-1',
@@ -43,7 +46,7 @@ describe('createStripeProvider', () => {
 
   test('is named stripe and fails loudly when Stripe returns no url', async () => {
     const { client } = fakeClient(null);
-    const provider = createStripeProvider(client);
+    const provider = createStripeProvider(client, EXPIRES);
     expect(provider.name).toBe('stripe');
     await expect(provider.start(booking, 'https://demo.example')).rejects.toThrow();
   });

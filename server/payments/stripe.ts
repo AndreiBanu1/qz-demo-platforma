@@ -14,6 +14,7 @@ export type StripeLike = {
           price_data: { currency: string; unit_amount: number; product_data: { name: string } };
         }[];
         metadata: { bookingId: string };
+        expires_at: number;
         success_url: string;
         cancel_url: string;
       }): Promise<{ id: string; url: string | null }>;
@@ -26,7 +27,8 @@ export function makeStripeClient(secretKey: string): Stripe {
   return new Stripe(secretKey, { httpClient: Stripe.createFetchHttpClient() });
 }
 
-export function createStripeProvider(client: StripeLike): PaymentProvider {
+/** `expiresAt` is when the Checkout Session lapses; the caller makes it match the booking's extended hold. */
+export function createStripeProvider(client: StripeLike, expiresAt: Date): PaymentProvider {
   return {
     name: 'stripe',
     async start(b: BookingRow, origin: string) {
@@ -43,6 +45,7 @@ export function createStripeProvider(client: StripeLike): PaymentProvider {
           },
         ],
         metadata: { bookingId: b.id },
+        expires_at: Math.floor(expiresAt.getTime() / 1000),
         success_url: `${origin}/confirmare/${b.id}`,
         cancel_url: `${origin}/avans/${b.id}`,
       });
@@ -60,7 +63,12 @@ export function verifyStripeEvent(raw: string, signature: string, secret: string
 /** The only parts of an event we rely on; `data.object` is narrowed once the type is known. */
 export type StripeEventLike = { type: string; data: { object: unknown } };
 
-type CompletedSession = { id?: string; payment_status?: string; metadata?: { bookingId?: string } | null };
+type CompletedSession = {
+  id?: string;
+  payment_status?: string;
+  amount_total?: number | null;
+  currency?: string | null;
+  metadata?: { bookingId?: string } | null };
 
 /**
  * Applies a verified event. Only `checkout.session.completed` for a paid session does anything.
@@ -74,10 +82,12 @@ export async function handleStripeEvent(db: D1Database, event: StripeEventLike, 
   const booking = await getBooking(db, bookingId);
   if (!booking) return;
 
-  const confirmed = await confirmBookingIfPending(db, bookingId, now);
-  const after = confirmed ? booking : await getBooking(db, bookingId);
+  // The metadata is only a pointer: confirm only when what was paid matches the deposit we asked for.
+  const paidRight = session.amount_total === booking.deposit_lei * 100 && session.currency === 'ron';
+  const confirmed = paidRight && (await confirmBookingIfPending(db, bookingId, now));
+  const after = confirmed || !paidRight ? booking : await getBooking(db, bookingId);
   // Paid, but the hold ended or the booking was cancelled first: record it so the money can be returned by hand.
-  const status = confirmed || after?.status === 'confirmed' ? 'succeeded' : 'paid_not_confirmed';
+  const status = confirmed || (paidRight && after?.status === 'confirmed') ? 'succeeded' : 'paid_not_confirmed';
   await insertPayment(
     db,
     { booking_id: bookingId, provider: 'stripe', status, card_last4: null, external_id: session.id },

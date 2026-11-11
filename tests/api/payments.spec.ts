@@ -144,14 +144,17 @@ test('/stripe is 404 NOT_FOUND when Stripe is not configured', async ({ newClien
 
 const stripe = new Stripe('sk_test_unused_no_network');
 
-function sessionEvent(bookingId: string, eventId = `evt_${crypto.randomUUID()}`, sessionId = `cs_test_${crypto.randomUUID()}`) {
+function sessionEvent(bookingId: string, deposit: number, eventId = `evt_${crypto.randomUUID()}`, sessionId = `cs_test_${crypto.randomUUID()}`) {
   return {
     id: eventId,
     object: 'event',
     type: 'checkout.session.completed',
-    data: { object: { id: sessionId, object: 'checkout.session', payment_status: 'paid', metadata: { bookingId } } },
+    data: { object: { id: sessionId, object: 'checkout.session', payment_status: 'paid', amount_total: deposit * 100, currency: 'ron', metadata: { bookingId } } },
   };
 }
+
+const depositOf = async (c: Client, id: string): Promise<number> =>
+  (await (await c.request.get(`/api/bookings/${id}`)).json()).depositLei;
 
 async function postWebhook(request: Client['request'], payload: string, signature?: string) {
   return request.post('/api/payments/stripe/webhook', {
@@ -169,7 +172,7 @@ test.describe('webhook', () => {
   test('a valid signature confirms the booking', async ({ newClient, request }) => {
     const c = await newClient();
     const id = await bookOne(c);
-    const payload = JSON.stringify(sessionEvent(id));
+    const payload = JSON.stringify(sessionEvent(id, await depositOf(c, id)));
     const r = await postWebhook(request, payload, sign(payload));
     expect(r.status()).toBe(200);
     expect(await statusOf(c, id)).toBe('confirmed');
@@ -178,14 +181,14 @@ test.describe('webhook', () => {
   test('a bad or missing signature is 400 VALIDATION and changes nothing', async ({ newClient, request }) => {
     const c = await newClient();
     const id = await bookOne(c);
-    const payload = JSON.stringify(sessionEvent(id));
+    const payload = JSON.stringify(sessionEvent(id, await depositOf(c, id)));
     for (const sig of [sign(payload, 'whsec_wrong'), 't=1,v1=deadbeef', undefined]) {
       const r = await postWebhook(request, payload, sig);
       expect(r.status(), String(sig)).toBe(400);
       expect((await r.json()).error.code).toBe('VALIDATION');
     }
     // A tampered body with a signature made for the original one.
-    const tampered = JSON.stringify(sessionEvent(id, 'evt_other'));
+    const tampered = JSON.stringify(sessionEvent(id, await depositOf(c, id), 'evt_other'));
     expect((await postWebhook(request, tampered, sign(payload))).status()).toBe(400);
     expect(await statusOf(c, id)).toBe('pending_payment');
   });
@@ -193,7 +196,7 @@ test.describe('webhook', () => {
   test('the same event twice: the second is 200 and changes nothing', async ({ newClient, request }) => {
     const c = await newClient();
     const id = await bookOne(c);
-    const payload = JSON.stringify(sessionEvent(id));
+    const payload = JSON.stringify(sessionEvent(id, await depositOf(c, id)));
     expect((await postWebhook(request, payload, sign(payload))).status()).toBe(200);
     // Cancelling first proves the replay cannot revive the booking.
     expect((await c.request.post(`/api/bookings/${id}/cancel`)).status()).toBe(200);
@@ -202,10 +205,18 @@ test.describe('webhook', () => {
     expect(await statusOf(c, id)).toBe('cancelled');
   });
 
+  test('a payment of the wrong amount does not confirm the booking', async ({ newClient, request }) => {
+    const c = await newClient();
+    const id = await bookOne(c);
+    const payload = JSON.stringify(sessionEvent(id, 1));
+    expect((await postWebhook(request, payload, sign(payload))).status()).toBe(200);
+    expect(await statusOf(c, id)).toBe('pending_payment');
+  });
+
   test('unknown event types are a 200 no-op', async ({ newClient, request }) => {
     const c = await newClient();
     const id = await bookOne(c);
-    const payload = JSON.stringify({ ...sessionEvent(id), type: 'customer.created' });
+    const payload = JSON.stringify({ ...sessionEvent(id, await depositOf(c, id)), type: 'customer.created' });
     expect((await postWebhook(request, payload, sign(payload))).status()).toBe(200);
     expect(await statusOf(c, id)).toBe('pending_payment');
   });
@@ -214,7 +225,7 @@ test.describe('webhook', () => {
     const c = await newClient();
     const id = await bookOne(c);
     await expireHold(c.request, id);
-    const payload = JSON.stringify(sessionEvent(id));
+    const payload = JSON.stringify(sessionEvent(id, await depositOf(c, id)));
     expect((await postWebhook(request, payload, sign(payload))).status()).toBe(200);
     expect(await statusOf(c, id)).toBe('pending_payment');
   });

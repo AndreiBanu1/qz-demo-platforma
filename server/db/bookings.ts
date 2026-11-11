@@ -150,3 +150,15 @@ export async function setHoldUntil(db: D1Database, id: string, at: Date): Promis
   const r = await db.prepare('UPDATE bookings SET hold_until = ?2 WHERE id = ?1').bind(id, at.toISOString()).run();
   return r.meta.changes === 1;
 }
+
+/** Moves the hold end to `until`, only while the booking is pending_payment with a live hold. */
+export async function extendHoldIfPending(db: D1Database, id: string, now: Date, until: Date): Promise<boolean> {
+  const r = await db
+    .prepare(
+      `UPDATE bookings SET hold_until = ?3
+       WHERE id = ?1 AND status = 'pending_payment' AND hold_until > ?2`,
+    )
+    .bind(id, now.toISOString(), until.toISOString())
+    .run();
+  return r.meta.changes === 1;
+}
