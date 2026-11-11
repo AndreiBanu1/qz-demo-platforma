@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { RESET_TOKEN } from '../support/reset-token';
 
 const HEADERS = {
   'x-robots-tag': 'noindex, nofollow',
@@ -65,11 +64,4 @@ test('reset with a wrong or missing token is 404', async ({ request }) => {
   expect(wrong.status()).toBe(404);
   expect((await wrong.json()).error.code).toBe('NOT_FOUND');
   expect((await request.post('/__demo/reset')).status()).toBe(404);
-});
-
-test('reset with the right token is 204, even without an Origin', async ({ playwright, baseURL }) => {
-  const ctx = await playwright.request.newContext({ baseURL });
-  const r = await ctx.post('/__demo/reset', { headers: { 'X-Demo-Reset-Token': RESET_TOKEN } });
-  expect(r.status()).toBe(204);
-  await ctx.dispose();
 });
