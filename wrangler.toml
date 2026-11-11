@@ -1,6 +1,6 @@
 name = "bucla-verde-demo"
 main = "server/index.ts"
-compatibility_date = "2026-11-01"
+compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]

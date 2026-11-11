@@ -8,8 +8,7 @@ export default defineConfig(async () => {
     plugins: [
       cloudflareTest({
         wrangler: { configPath: './wrangler.toml' },
-        // The bundled workerd is older than wrangler.toml's compatibility_date, so pin one it supports.
-        miniflare: { compatibilityDate: '2026-08-01', bindings: { TEST_MIGRATIONS: migrations } },
+        miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
       }),
     ],
     test: {
