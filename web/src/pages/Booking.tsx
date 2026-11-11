@@ -19,9 +19,9 @@ function Choice({ name, value, checked, onChange, broken, children }: {
 }) {
   const input = <input type="radio" name={name} value={value} checked={checked} onChange={onChange} className="h-5 w-5 accent-green-800" />;
   if (broken) {
-    // BUG:a11y-gap
     return (
       <div className="flex items-center gap-3 py-2">
+        {/* BUG:a11y-gap */}
         {input}
         <span>{children}</span>
       </div>
@@ -116,8 +116,8 @@ export function Booking() {
   };
 
   return (
-    // BUG:a11y-gap: the focus-off class removes every focus outline inside the booking page.
     <div className={broken ? 'focus-off' : undefined}>
+      {/* BUG:a11y-gap: the focus-off class removes every focus outline inside the booking page. */}
       <h1 className="text-3xl font-bold text-green-950">Programare</h1>
       <ErrorText>{services.error ?? stylists.error}</ErrorText>
 
@@ -149,8 +149,10 @@ export function Booking() {
           3. Ziua
         </h2>
         {broken ? (
-          // BUG:a11y-gap
-          <input type="date" value={date} onChange={(e) => update({ d: e.target.value, t: null })} className="input max-w-xs" />
+          <>
+            {/* BUG:a11y-gap */}
+            <input type="date" value={date} onChange={(e) => update({ d: e.target.value, t: null })} className="input max-w-xs" />
+          </>
         ) : (
           <label className="block max-w-xs">
             <span className="block font-medium">Data programării</span>
@@ -171,12 +173,12 @@ export function Booking() {
           <div role="group" aria-label="Ore libere" className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6">
             {times.map((s) =>
               broken ? (
-                // BUG:a11y-gap: a clickable div with no role, no tabIndex, no keyboard support.
                 <div
                   key={s.start}
                   onClick={() => update({ t: s.start })}
                   className={`cursor-pointer rounded-md border-2 border-green-800 px-3 py-2 text-center font-semibold ${start === s.start ? 'bg-green-800 text-white' : 'bg-white text-green-900'}`}
                 >
+                  {/* BUG:a11y-gap: a clickable div with no role, no tabIndex, no keyboard support. */}
                   {hhmm(s.start)}
                 </div>
               ) : (

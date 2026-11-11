@@ -29,7 +29,8 @@
   .link {
     @apply font-medium text-green-800 underline underline-offset-2 hover:text-green-950;
   }
-  /* BUG:a11y-gap: while the bug is on, the booking page wears this class and loses every focus outline. */
+  /* BUG:a11y-gap */
+  /* While the bug is on, the booking page wears this class and loses every focus outline. */
   .focus-off *:focus,
   .focus-off *:focus-visible {
     outline: none !important;

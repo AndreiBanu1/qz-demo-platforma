@@ -1,5 +1,5 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ApiError, get, post, setUnauthorizedHandler } from './api';
 
 export type User = { id: string; email: string; name: string; role: 'client' | 'admin' };
@@ -70,33 +70,38 @@ export function useBugs(): Bugs {
 /** Applies `?bugs=` on load (a fetch, not a page load), drops it from the address bar, then reads the active bugs. */
 export function BugsProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<Omit<Bugs, 'has'>>({ ready: false, active: [], labels: {} });
+  const navigate = useNavigate();
+  const location = useLocation();
+  // Only the first location matters: later navigation must not re-apply a parameter.
+  const [initial] = useState(location);
+
+  const started = useRef(false);
 
   useEffect(() => {
-    let alive = true;
+    if (started.current) return; // once per page load, even when navigate changes identity or StrictMode remounts
+    started.current = true;
     (async () => {
-      const url = new URL(window.location.href);
-      const ids = url.searchParams.get('bugs');
+      const query = new URLSearchParams(initial.search);
+      const ids = query.get('bugs');
       if (ids !== null) {
         try {
           await post('/__demo/bugs', { ids }, { quiet401: true });
         } catch (e) {
           console.error(e);
         }
-        url.searchParams.delete('bugs');
-        // Keep history.state so React Router's bookkeeping stays valid.
-        window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash);
+        // Drop the parameter through the router, so its location (and every link built from it) loses it too.
+        query.delete('bugs');
+        const search = query.toString();
+        navigate({ pathname: window.location.pathname, search: search ? `?${search}` : '', hash: window.location.hash }, { replace: true });
       }
       try {
         const r = await get<{ active: string[]; labels: Record<string, string> }>('/__demo/bugs', { quiet401: true });
-        if (alive) setState({ ready: true, active: r.active, labels: r.labels });
+        setState({ ready: true, active: r.active, labels: r.labels });
       } catch {
-        if (alive) setState({ ready: true, active: [], labels: {} });
+        setState({ ready: true, active: [], labels: {} });
       }
     })();
-    return () => {
-      alive = false;
-    };
-  }, []);
+  }, [initial, navigate]);
 
   const value = useMemo(() => ({ ...state, has: (id: string) => state.active.includes(id) }), [state]);
   return <BugsContext.Provider value={value}>{children}</BugsContext.Provider>;

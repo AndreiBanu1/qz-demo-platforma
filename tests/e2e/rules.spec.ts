@@ -51,3 +51,12 @@ test('a11y-gap turns the time slots into plain divs and drops the labels (clean 
   await expect(page.getByText('10:00', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: '10:00', exact: true })).toHaveCount(0);
 });
+
+test('?bugs= stays out of the URL after the router moves (choosing a service)', async ({ page }) => {
+  await page.goto('/programare?bugs=booking-past-closing');
+  await expect(page.getByText('Mod cu buguri activ: programare după închidere', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Vezi lista bugurilor/ })).toHaveAttribute('href', /docs\/bugs\.md$/);
+  await page.getByRole('radio', { name: /^Tuns bărbați/ }).check();
+  await expect(page).toHaveURL(/[?&]s=tuns-barbati/);
+  expect(page.url()).not.toContain('bugs');
+});
