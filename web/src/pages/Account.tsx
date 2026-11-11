@@ -30,8 +30,8 @@ export function Account() {
 
   const all = [...(list.data?.bookings ?? [])].sort((a, b) => (a.start < b.start ? -1 : 1));
   const nowIso = new Date().toISOString();
-  const upcoming = all.filter((b) => b.status !== 'cancelled' && b.end >= nowIso);
-  const past = all.filter((b) => b.status === 'cancelled' || b.end < nowIso).reverse();
+  const upcoming = all.filter((b) => b.status !== 'cancelled' && b.status !== 'expired' && b.end >= nowIso);
+  const past = all.filter((b) => b.status === 'cancelled' || b.status === 'expired' || b.end < nowIso).reverse();
 
   const card = (b: BookingDto, canAct: boolean) => (
     <li key={b.id} className="card">
@@ -81,7 +81,7 @@ export function Account() {
 
       <section className="mt-8" aria-labelledby="trecute">
         <h2 id="trecute" className="text-2xl font-bold text-green-950">
-          Programări trecute sau anulate
+          Programări trecute, anulate sau expirate
         </h2>
         {list.data && past.length === 0 && <p className="mt-2">Nimic aici încă.</p>}
         <ul className="mt-3 space-y-3">{past.map((b) => card(b, false))}</ul>

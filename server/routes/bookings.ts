@@ -26,14 +26,15 @@ import {
 const HOLD_MS = 10 * 60_000;
 const CANCEL_NOTICE_MS = 24 * 60 * 60_000;
 
-export function toBookingDto(r: BookingRow): BookingDto {
+export function toBookingDto(r: BookingRow, at: Date): BookingDto {
+  const expired = r.status === 'pending_payment' && !!r.hold_until && r.hold_until <= at.toISOString();
   return {
     id: r.id,
     serviceId: r.service_id,
     stylistId: r.stylist_id,
     start: r.start_at,
     end: r.end_at,
-    status: r.status,
+    status: expired ? 'expired' : r.status,
     depositLei: r.deposit_lei,
     holdUntil: r.hold_until,
     refunded: r.refunded === 1,
@@ -96,7 +97,8 @@ bookings.post('/bookings', async (c) => {
 bookings.get('/bookings', async (c) => {
   const user = requireUser(c);
   const rows = await listBookingsForUser(c.env.DB, user.id);
-  return c.json({ bookings: rows.map(toBookingDto) });
+  const at = now(c.env);
+  return c.json({ bookings: rows.map((r) => toBookingDto(r, at)) });
 });
 
 bookings.get('/bookings/:id', async (c) => {
@@ -105,7 +107,7 @@ bookings.get('/bookings/:id', async (c) => {
   const idor = c.var.bugs.has('idor-booking');
   const row = idor ? await getBookingAnyOwner(c.env.DB, c.req.param('id')) : await getBooking(c.env.DB, c.req.param('id'));
   if (!row || (!idor && row.user_id !== user.id && user.role !== 'admin')) throw new AppError(404, 'NOT_FOUND');
-  return c.json(toBookingDto(row));
+  return c.json(toBookingDto(row, now(c.env)));
 });
 
 bookings.post('/bookings/:id/cancel', async (c) => {

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { ERROR_COPY } from '../../../server/errors';
 import type { BookingDto } from '../../../shared/schemas';
 import { get, messageOf, post } from '../api';
 import { BookingFacts, useCatalog } from '../booking';
@@ -51,7 +52,12 @@ export function Deposit() {
     <div className="max-w-xl">
       <h1 className="text-3xl font-bold text-green-950">Plătește avansul</h1>
       <ErrorText>{booking.error}</ErrorText>
-      {b && b.status !== 'pending_payment' && (
+      {b?.status === 'expired' && (
+        <p className="mt-4">
+          {ERROR_COPY.HOLD_EXPIRED} <Link className="link" to="/programare">Alege din nou o oră</Link>.
+        </p>
+      )}
+      {b && b.status !== 'pending_payment' && b.status !== 'expired' && (
         <p className="mt-4">
           Această programare nu mai așteaptă avansul. <Link className="link" to={`/confirmare/${b.id}`}>Vezi programarea</Link>.
         </p>

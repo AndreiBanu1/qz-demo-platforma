@@ -33,7 +33,9 @@ export function Confirmation() {
       ? 'Programarea ta este confirmată'
       : b.status === 'cancelled'
         ? 'Programarea a fost anulată'
-        : 'Programarea așteaptă avansul';
+        : b.status === 'expired'
+          ? 'Rezervare expirată'
+          : 'Programarea așteaptă avansul';
 
   return (
     <div className="max-w-xl">
@@ -61,9 +63,18 @@ export function Confirmation() {
               .
             </p>
           )}
+          {b.status === 'expired' && (
+            <p className="mt-4">
+              Ora nu a mai fost ținută pentru tine.{' '}
+              <Link className="link" to="/programare">
+                Alege din nou o oră
+              </Link>
+              .
+            </p>
+          )}
           <ErrorText>{error}</ErrorText>
           <div className="mt-6 flex flex-wrap gap-3">
-            {b.status !== 'cancelled' && (
+            {b.status !== 'cancelled' && b.status !== 'expired' && (
               <button type="button" className="btn-secondary" disabled={busy} onClick={() => void cancel()}>
                 Anulează programarea
               </button>

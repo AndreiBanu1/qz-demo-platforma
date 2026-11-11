@@ -57,7 +57,8 @@ export type ServiceDto = { id: string; name: string; durationMin: number; priceL
 export type StylistDto = { id: string; name: string; avatar: string };
 export type SlotDto = { stylistId: string; start: string };
 export type SlotsResponse = { slots: SlotDto[] };
-export type BookingStatusDto = 'pending_payment' | 'confirmed' | 'cancelled';
+/** `expired` is derived: a pending_payment booking whose hold has ended. The database keeps pending_payment. */
+export type BookingStatusDto = 'pending_payment' | 'confirmed' | 'cancelled' | 'expired';
 export type BookingDto = {
   id: string;
   serviceId: string;

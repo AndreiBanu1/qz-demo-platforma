@@ -19,8 +19,8 @@ import { toBookingDto } from './bookings';
 
 export const admin = new Hono<{ Bindings: Env; Variables: Vars }>();
 
-function toAdminBookingDto(r: BookingWithClientRow): AdminBookingDto {
-  return { ...toBookingDto(r), client: { name: r.client_name, email: r.client_email } };
+function toAdminBookingDto(r: BookingWithClientRow, at: Date): AdminBookingDto {
+  return { ...toBookingDto(r, at), client: { name: r.client_name, email: r.client_email } };
 }
 
 const onGrid = (d: Date) => d.getTime() % 60_000 === 0 && localParts(d).minutes % STEP_MIN === 0;
@@ -30,14 +30,15 @@ admin.get('/admin/calendar', async (c) => {
   const q = calendarQuerySchema.safeParse(c.req.query());
   if (!q.success) throw new AppError(400, 'VALIDATION', q.error.issues);
   const { from, to } = localDayWindow(q.data.date);
+  const at = now(c.env);
   const [stylists, bookings, blocks] = await Promise.all([
     listStylists(c.env.DB),
-    listActiveBookingsBetween(c.env.DB, from, to, now(c.env)),
+    listActiveBookingsBetween(c.env.DB, from, to, at),
     listBlocksBetween(c.env.DB, from, to),
   ]);
   const body: CalendarResponse = {
     stylists: stylists.map((s) => ({ id: s.id, name: s.name, avatar: s.avatar })),
-    bookings: bookings.map(toAdminBookingDto),
+    bookings: bookings.map((r) => toAdminBookingDto(r, at)),
     blocks: blocks.map((b): BlockDto => ({ id: b.id, stylistId: b.stylist_id, start: b.start_at, end: b.end_at })),
   };
   return c.json(body);
@@ -64,5 +65,6 @@ admin.delete('/admin/blocks/:id', async (c) => {
 admin.get('/admin/bookings', async (c) => {
   requireAdmin(c);
   const rows = await listAllBookingsWithClient(c.env.DB);
-  return c.json({ bookings: rows.map(toAdminBookingDto) });
+  const at = now(c.env);
+  return c.json({ bookings: rows.map((r) => toAdminBookingDto(r, at)) });
 });

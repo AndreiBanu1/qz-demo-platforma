@@ -7,6 +7,7 @@ export const STATUS_LABEL: Record<BookingDto['status'], string> = {
   pending_payment: 'Avans neplătit',
   confirmed: 'Confirmată',
   cancelled: 'Anulată',
+  expired: 'Rezervare expirată',
 };
 
 /** Services and stylists, for turning ids into names. */

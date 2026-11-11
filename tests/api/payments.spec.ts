@@ -116,6 +116,17 @@ test("only the owner can pay: someone else's booking is 404, anonymous is 401", 
   expect(await statusOf(owner, id)).toBe('pending_payment');
 });
 
+test('an expired hold is listed as expired, though the database keeps pending_payment', async ({ newClient, request }) => {
+  const c = await newClient();
+  const id = await bookOne(c);
+  expect(await statusOf(c, id)).toBe('pending_payment');
+  expect((await expireHold(request, id)).status()).toBe(204);
+  expect(await statusOf(c, id)).toBe('expired');
+  const list = await (await c.request.get('/api/bookings')).json();
+  expect(list.bookings.find((b: { id: string }) => b.id === id).status).toBe('expired');
+  expect((await pay(c, id)).status()).toBe(409);
+});
+
 test('expire-hold is token protected', async ({ request }) => {
   expect((await request.post('/__demo/fixtures/expire-hold/x')).status()).toBe(404);
   expect(
