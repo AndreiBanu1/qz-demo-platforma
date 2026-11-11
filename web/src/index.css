@@ -3,6 +3,11 @@
 @tailwind utilities;
 
 @layer base {
+  /* Fallback for the sticky header (about 7rem); Layout keeps the exact height in sync. */
+  html {
+    scroll-padding-top: 8rem;
+  }
+
   body {
     @apply bg-green-50 text-stone-900 antialiased;
   }

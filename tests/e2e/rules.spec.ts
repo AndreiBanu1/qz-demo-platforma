@@ -60,3 +60,12 @@ test('?bugs= stays out of the URL after the router moves (choosing a service)', 
   await expect(page).toHaveURL(/[?&]s=tuns-barbati/);
   expect(page.url()).not.toContain('bugs');
 });
+
+test('scroll-padding-top covers the sticky header, so focus is never hidden under it', async ({ page }) => {
+  await page.goto('/programare?bugs=slow-login'); // the bug strip makes the header taller
+  const { padding, header } = await page.evaluate(() => ({
+    padding: parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop),
+    header: document.querySelector('header')!.getBoundingClientRect().height,
+  }));
+  expect(padding).toBeGreaterThanOrEqual(header);
+});

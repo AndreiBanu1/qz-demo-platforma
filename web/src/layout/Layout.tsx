@@ -1,4 +1,4 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth, useBugs } from '../state';
 import { Banner } from './Banner';
@@ -34,9 +34,25 @@ export function Layout() {
   const { user, ready, logout } = useAuth();
   const bugs = useBugs();
   const location = useLocation();
+  const header = useRef<HTMLElement>(null);
+  // The header is sticky (banner + bug strip + nav) and its height changes with the strip and with wrapping.
+  // Keep scroll-padding-top equal to it, so a focused control is never scrolled underneath (WCAG 2.4.11).
+  useEffect(() => {
+    const el = header.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('scroll-padding-top', `${el.offsetHeight + 8}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('scroll-padding-top');
+    };
+  }, []);
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-40 shadow">
+      <header ref={header} className="sticky top-0 z-40 shadow">
         <Banner />
         <BugStrip />
         <div className="border-b border-green-200 bg-white">
