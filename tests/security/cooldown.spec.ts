@@ -1,10 +1,9 @@
 import { requestFor } from '../support/bugs';
 import { test, expect } from '../support/fixtures';
-import { assertLocalOnly, resolveTarget } from '../support/hosts';
-import { isLocalHost } from '../checks/types';
+import { assertLocalOnly, isLocalTarget, resolveTarget } from '../support/hosts';
 
 test('the 6th failed login for one email is a 429 with the cool-down message', async ({ context, baseURL }) => {
-  test.skip(!isLocalHost(baseURL), 'brute-force style tests run on a local target only');
+  test.skip(!isLocalTarget(baseURL), 'brute-force style tests run on a local target only');
   assertLocalOnly(resolveTarget(process.env.TARGET));
   const email = `nimeni-${crypto.randomUUID()}@exemplu.test`;
   const api = await requestFor(context); // one fixed random CF-Connecting-IP for the whole test

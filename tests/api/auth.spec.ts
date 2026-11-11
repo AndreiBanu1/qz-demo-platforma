@@ -1,3 +1,4 @@
+import { isLocalTarget } from '../support/hosts';
 import { RESET_TOKEN } from '../support/reset-token';
 import { expect, test } from '../support/fixtures';
 
@@ -75,7 +76,8 @@ test('wrong password and unknown email give the same response', async ({ request
   expect((await wrong.json()).error.code).toBe('INVALID_CREDENTIALS');
 });
 
-test('cool-down: the 6th attempt for one email gets 429, even with the right password', async ({ request }) => {
+test('cool-down: the 6th attempt for one email gets 429, even with the right password', async ({ request, baseURL }) => {
+  test.skip(!isLocalTarget(baseURL), 'local only');
   const email = unique();
   await request.post('/api/auth/signup', { data: { name: 'Ana', email, password } });
   const headers = ip();
@@ -90,7 +92,8 @@ test('cool-down: the 6th attempt for one email gets 429, even with the right pas
   expect(body.error.message).toBe('Prea multe încercări. Încearcă din nou în 15 minute.');
 });
 
-test('cool-down: one IP is blocked after 30 failures across emails', async ({ request }) => {
+test('cool-down: one IP is blocked after 30 failures across emails', async ({ request, baseURL }) => {
+  test.skip(!isLocalTarget(baseURL), 'local only');
   const headers = ip();
   for (let i = 0; i < 30; i++) {
     const r = await request.post('/api/auth/login', { headers, data: { email: unique(), password: 'gresita-gresita' } });

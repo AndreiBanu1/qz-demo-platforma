@@ -18,9 +18,15 @@ export function resolveTarget(raw?: string): URL {
   return url;
 }
 
+/** True for 127.0.0.1 and localhost only. */
+export function isLocalTarget(url: URL | string | undefined): boolean {
+  if (!url) return false;
+  return LOCAL_HOSTS.includes(new URL(url).hostname);
+}
+
 /** Load and brute-force style tests may only ever run against a local copy. */
 export function assertLocalOnly(url: URL): void {
-  if (!LOCAL_HOSTS.includes(url.hostname)) {
+  if (!isLocalTarget(url)) {
     throw new Error(`Local-only test refused for host: ${url.hostname}`);
   }
 }

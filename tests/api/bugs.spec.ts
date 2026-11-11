@@ -1,4 +1,5 @@
 import { withBugs } from '../support/bugs';
+import { isLocalTarget } from '../support/hosts';
 import { expect, test, type Client } from '../support/fixtures';
 
 const password = 'parola-de-test-1';
@@ -61,7 +62,8 @@ test('login-enumeration off: both failures say the same generic thing', async ({
   expect((await b.json()).error.message).toBe('Email sau parolă greșite');
 });
 
-test('slow-login on: login takes at least 3000 ms, on success and on failure', async ({ request, newClient }) => {
+test('slow-login on: login takes at least 3000 ms, on success and on failure', async ({ request, newClient, baseURL }) => {
+  test.skip(!isLocalTarget(baseURL), 'local only');
   const c = await newClient();
   const ctx = await withBugs(request, ['slow-login']);
   for (const pw of [c.password, 'gresita-total']) {
@@ -133,7 +135,8 @@ test("idor-booking on: another client's booking is returned; off: 404", async ({
   await mine.dispose();
 });
 
-test('cool-down still applies with every bug on', async ({ request, newClient }) => {
+test('cool-down still applies with every bug on', async ({ request, newClient, baseURL }) => {
+  test.skip(!isLocalTarget(baseURL), 'local only');
   test.setTimeout(60_000); // five failed logins at 3 s each
   const c = await newClient();
   const ctx = await withBugs(request, 'all');
