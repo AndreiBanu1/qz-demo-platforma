@@ -1,0 +1,38 @@
+{
+  "name": "qz-demo-platforma",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --ip 127.0.0.1 --port 8787",
+    "build": "vite build --config web/vite.config.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test:unit": "vitest run",
+    "test:worker": "vitest run --config vitest.workers.config.ts --passWithNoTests",
+    "test:e2e": "playwright test",
+    "start:test": "node scripts/start-test.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:reset": "rm -rf .wrangler/state && npm run db:migrate:local"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.23.0",
+    "@cloudflare/workers-types": "5.20261110.1",
+    "@playwright/test": "1.65.0",
+    "@types/node": "26.6.6",
+    "@types/react": "18.3.31",
+    "@types/react-dom": "18.3.7",
+    "eslint": "9.39.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2",
+    "vite": "8.3.8",
+    "vitest": "4.1.12",
+    "wrangler": "4.160.0"
+  },
+  "dependencies": {
+    "hono": "4.13.17",
+    "zod": "4.6.7",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

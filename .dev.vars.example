@@ -1,0 +1,3 @@
+# Local-only values. start:test copies this to .dev.vars when missing.
+DEMO_RESET_TOKEN=local-reset-token
+COOKIE_SECRET=local-only-cookie-secret-not-for-production

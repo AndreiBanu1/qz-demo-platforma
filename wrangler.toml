@@ -1,0 +1,23 @@
+name = "bucla-verde-demo"
+main = "server/index.ts"
+compatibility_date = "2026-11-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "web/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*", "/__demo/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bucla-verde-demo"
+# Placeholder: Task 13 replaces this with the real D1 id. Local dev works without it.
+database_id = "REPLACE_IN_TASK_13"
+migrations_dir = "server/db/migrations"
+
+[triggers]
+crons = ["0 1 * * *"]
+
+[observability]
+enabled = true
