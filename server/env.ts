@@ -10,6 +10,8 @@ export type Env = {
   STRIPE_ENABLED?: string;
   BUGS_ENABLED?: string;
   DEMO_NOW?: string;
+  /** `true` switches on the test-only /__demo/fixtures/* routes. Local only; unset in production. */
+  DEMO_FIXTURES?: string;
   PBKDF2_ITERATIONS?: string;
 };
 

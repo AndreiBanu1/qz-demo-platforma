@@ -59,6 +59,27 @@ test('reset fails closed when the secret is unset', async () => {
   expect(res.status).toBe(404);
 });
 
+test('fixtures are 404 unless DEMO_FIXTURES is true, even with the right token', async () => {
+  const headers = { 'X-Demo-Reset-Token': env.DEMO_RESET_TOKEN };
+  for (const flag of [undefined, 'false', '']) {
+    const res = await createApp().request(post('/__demo/fixtures/delete-user', headers), {}, { ...env, DEMO_FIXTURES: flag });
+    expect(res.status, String(flag)).toBe(404);
+  }
+  const on = await createApp().request(post('/__demo/fixtures/expire-hold/nope', headers), {}, { ...env, DEMO_FIXTURES: 'true' });
+  expect(on.status).toBe(404); // the fixture ran: unknown booking
+  const on2 = await createApp().request(
+    new Request(`${ORIGIN}/__demo/fixtures/delete-user`, { method: 'POST', headers, body: JSON.stringify({ email: 'nobody@exemplu.test' }) }),
+    {},
+    { ...env, DEMO_FIXTURES: 'true' },
+  );
+  expect(on2.status).toBe(204);
+});
+
+test('reset stays token-only and does not need DEMO_FIXTURES', async () => {
+  const res = await createApp().request(post('/__demo/reset', { 'X-Demo-Reset-Token': 'wrong' }), {}, { ...env, DEMO_FIXTURES: undefined });
+  expect(res.status).toBe(404);
+});
+
 test('ERROR_COPY matches the brief verbatim', () => {
   expect(ERROR_COPY).toEqual({
     VALIDATION: 'Datele trimise nu sunt valide.',

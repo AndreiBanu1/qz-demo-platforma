@@ -22,7 +22,7 @@ async function tokensMatch(a: string, b: string): Promise<boolean> {
 }
 
 /**
- * Demo routes. Token-protected: POST /reset and POST /fixtures/*. Open: GET /health, GET and POST /bugs
+ * Demo routes. Token-protected: POST /reset and POST /fixtures/* (the fixtures also need DEMO_FIXTURES=true). Open: GET /health, GET and POST /bugs
  * (the SPA calls /bugs without a token, so it keeps the Origin check).
  */
 export const demo = new Hono<{ Bindings: Env; Variables: Vars }>();
@@ -40,6 +40,12 @@ demo.post('/reset', async (c) => {
   await requireToken(c);
   await resetDatabase(c.env.DB, now(c.env));
   return c.body(null, 204);
+});
+
+/** The fixtures only exist where DEMO_FIXTURES is `true` (local test runs). Anywhere else they are a plain 404. */
+demo.use('/fixtures/*', async (c, next) => {
+  if (c.env.DEMO_FIXTURES !== 'true') throw new AppError(404, 'NOT_FOUND');
+  await next();
 });
 
 /** Removes one user and leaves their sessions in place, so a test can prove a dangling session gets 401. */

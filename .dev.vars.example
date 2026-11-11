@@ -1,5 +1,7 @@
 # Local-only values. start:test copies this to .dev.vars when missing.
 DEMO_RESET_TOKEN=local-reset-token
+# Switches on the test-only /__demo/fixtures/* routes. Never set this in production.
+DEMO_FIXTURES=true
 COOKIE_SECRET=local-only-cookie-secret-not-for-production
 # Local-only fake used to sign webhook test events. Not a real Stripe secret.
 STRIPE_WEBHOOK_SECRET=whsec_local_test
