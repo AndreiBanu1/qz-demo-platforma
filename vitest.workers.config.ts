@@ -1,7 +1,20 @@
-import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import path from 'node:path';
+import { cloudflareTest, readD1Migrations } from '@cloudflare/vitest-pool-workers';
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig({
-  plugins: [cloudflareTest({ wrangler: { configPath: './wrangler.toml' } })],
-  test: { include: ['tests/worker/**/*.test.ts'] },
+export default defineConfig(async () => {
+  const migrations = await readD1Migrations(path.join(import.meta.dirname, 'server/db/migrations'));
+  return {
+    plugins: [
+      cloudflareTest({
+        wrangler: { configPath: './wrangler.toml' },
+        // The bundled workerd is older than wrangler.toml's compatibility_date, so pin one it supports.
+        miniflare: { compatibilityDate: '2026-08-01', bindings: { TEST_MIGRATIONS: migrations } },
+      }),
+    ],
+    test: {
+      include: ['tests/worker/**/*.test.ts'],
+      setupFiles: ['./tests/worker/apply-migrations.ts'],
+    },
+  };
 });
