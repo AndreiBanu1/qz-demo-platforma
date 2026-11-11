@@ -11,7 +11,8 @@ async function tokensMatch(a: string, b: string): Promise<boolean> {
     crypto.subtle.digest('SHA-256', enc.encode(a)),
     crypto.subtle.digest('SHA-256', enc.encode(b)),
   ]);
-  return crypto.subtle.timingSafeEqual(da, db);
+  // timingSafeEqual is a Workers extension missing from the DOM SubtleCrypto type.
+  return (crypto.subtle as SubtleCrypto & { timingSafeEqual(a: ArrayBuffer, b: ArrayBuffer): boolean }).timingSafeEqual(da, db);
 }
 
 /** Token-protected demo routes. Later tasks add fixtures here. */
