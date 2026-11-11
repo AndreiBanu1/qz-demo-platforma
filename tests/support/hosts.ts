@@ -1,4 +1,9 @@
-import hosts from '../../config/hosts.json';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+const hosts: { local: string[]; public: string[] } = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../../config/hosts.json', import.meta.url)), 'utf8'),
+);
 
 const DEFAULT_TARGET = 'http://127.0.0.1:8787';
 const LOCAL_HOSTS = ['127.0.0.1', 'localhost'];

@@ -19,7 +19,7 @@ export default defineConfig({
     {
       name: 'chromium-desktop',
       use: { ...devices['Desktop Chrome'] },
-      testIgnore: ['tests/bug-catcher/**'],
+      testIgnore: ['**/tests/unit/**', '**/tests/worker/**', '**/tests/bug-catcher/**'],
     },
   ],
 });
