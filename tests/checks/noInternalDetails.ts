@@ -19,8 +19,8 @@ export async function noInternalDetails({ context }: CheckFixtures): Promise<voi
     expect(text, '[check:noInternalDetails] body leaks a source file name (.ts)').not.toContain('.ts');
     // A real stack trace: "at" at the start of an indented line. In JSON the newline is written as \n.
     expect(text, '[check:noInternalDetails] body leaks a stack trace').not.toMatch(/(?:\n|\\n)\s+at /);
-    expect(res.status(), '[check:noInternalDetails] malformed start is not a 400').toBe(400);
-    expect(JSON.parse(text).error.code, '[check:noInternalDetails] error code').toBe('VALIDATION');
+    expect(res.status(), 'malformed start is not a 400').toBe(400);
+    expect(JSON.parse(text).error.code, 'error code').toBe('VALIDATION');
   } finally {
     await api.dispose();
     await client.request.dispose();

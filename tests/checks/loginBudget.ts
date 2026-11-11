@@ -19,7 +19,7 @@ export async function loginBudget({ context }: CheckFixtures): Promise<void> {
       const t0 = Date.now();
       const res = await api.post('/api/auth/login', { data: { email: client.email, password } });
       const took = Date.now() - t0;
-      expect(res.status(), '[check:loginBudget] login status').toBe(password === client.password ? 200 : 401);
+      expect(res.status(), 'login status').toBe(password === client.password ? 200 : 401);
       expect(took, `[check:loginBudget] login took ${took} ms`).toBeLessThan(BUDGET_MS);
     }
   } finally {

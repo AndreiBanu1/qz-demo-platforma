@@ -15,9 +15,9 @@ export async function bookingAccessControl({ context }: CheckFixtures): Promise<
     const created = await ownerApi.post('/api/bookings', {
       data: { serviceId: 'tuns-barbati', stylistId: 'stylist-iona', start: randomAprilStart() },
     });
-    expect(created.status(), '[check:bookingAccessControl] owner could not book').toBe(201);
+    expect(created.status(), 'owner could not book').toBe(201);
     const { id } = await created.json();
-    expect((await ownerApi.get(`/api/bookings/${id}`)).status(), '[check:bookingAccessControl] owner cannot read own booking').toBe(200);
+    expect((await ownerApi.get(`/api/bookings/${id}`)).status(), 'owner cannot read own booking').toBe(200);
 
     const theirs = await otherApi.get(`/api/bookings/${id}`);
     expect(theirs.status(), "[check:bookingAccessControl] another client's booking status").toBe(404);
