@@ -11,7 +11,7 @@ run_worker_first = ["/api/*", "/__demo/*"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "bucla-verde-demo"
+database_name = "bucla-verde"
 # Placeholder: Task 13 replaces this with the real D1 id. Local dev works without it.
 database_id = "REPLACE_IN_TASK_13"
 migrations_dir = "server/db/migrations"
