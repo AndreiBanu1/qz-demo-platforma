@@ -81,7 +81,7 @@ test('paying after the hold expired is HOLD_EXPIRED and confirms nothing', async
   const r = await pay(c, id);
   expect(r.status()).toBe(409);
   expect((await r.json()).error.code).toBe('HOLD_EXPIRED');
-  expect(await statusOf(c, id)).toBe('pending_payment');
+  expect(await statusOf(c, id)).toBe('expired'); // not confirmed: still pending_payment in the database, listed as expired
 });
 
 test('paying a cancelled booking is HOLD_EXPIRED', async ({ newClient }) => {
@@ -238,6 +238,6 @@ test.describe('webhook', () => {
     await expireHold(c.request, id);
     const payload = JSON.stringify(sessionEvent(id, await depositOf(c, id)));
     expect((await postWebhook(request, payload, sign(payload))).status()).toBe(200);
-    expect(await statusOf(c, id)).toBe('pending_payment');
+    expect(await statusOf(c, id)).toBe('expired');
   });
 });
