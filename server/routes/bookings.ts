@@ -1,5 +1,11 @@
 import { Hono, type Context } from 'hono';
-import { getBooking, insertBookingIfFree, listBookingsForUser, setBookingStatus, type BookingRow } from '../db/bookings';
+import {
+  cancelBookingIfStatus,
+  getBooking,
+  insertBookingIfFree,
+  listBookingsForUser,
+  type BookingRow,
+} from '../db/bookings';
 import { getService, getStylist } from '../db/catalog';
 import { depositLei } from '../domain/deposit';
 import { fitsInDay, STEP_MIN } from '../domain/slots';
@@ -102,18 +108,23 @@ bookings.get('/bookings/:id', async (c) => {
 
 bookings.post('/bookings/:id/cancel', async (c) => {
   const user = requireUser(c);
-  const row = await getBooking(c.env.DB, c.req.param('id'));
-  if (!row || row.user_id !== user.id) throw new AppError(404, 'NOT_FOUND');
-  if (row.status === 'cancelled') {
-    const same: CancelBookingResponse = { status: 'cancelled', refunded: row.refunded === 1 };
-    return c.json(same);
+  // Statuses only move forward (pending -> confirmed -> cancelled), so one retry covers a concurrent pay.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const row = await getBooking(c.env.DB, c.req.param('id'));
+    if (!row || row.user_id !== user.id) throw new AppError(404, 'NOT_FOUND');
+    if (row.status === 'cancelled') {
+      const same: CancelBookingResponse = { status: 'cancelled', refunded: row.refunded === 1 };
+      return c.json(same);
+    }
+    if (new Date(row.start_at).getTime() - now(c.env).getTime() < CANCEL_NOTICE_MS) {
+      throw new AppError(409, 'CANCEL_TOO_LATE');
+    }
+    const refunded = row.status === 'confirmed';
+    // Conditional on the status we just read: if a payment landed in between, 0 rows change and we re-read.
+    if (await cancelBookingIfStatus(c.env.DB, row.id, row.status, refunded)) {
+      const res: CancelBookingResponse = { status: 'cancelled', refunded };
+      return c.json(res);
+    }
   }
-  const at = now(c.env);
-  if (new Date(row.start_at).getTime() - at.getTime() < CANCEL_NOTICE_MS) {
-    throw new AppError(409, 'CANCEL_TOO_LATE');
-  }
-  const refunded = row.status === 'confirmed';
-  await setBookingStatus(c.env.DB, row.id, 'cancelled', refunded);
-  const res: CancelBookingResponse = { status: 'cancelled', refunded };
-  return c.json(res);
+  throw new Error('booking status kept changing during cancel');
 });

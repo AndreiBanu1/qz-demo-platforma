@@ -14,7 +14,8 @@ export type NewPayment = Omit<PaymentRow, 'id' | 'created_at'>;
 export async function insertPayment(db: D1Database, p: NewPayment, now: Date): Promise<boolean> {
   const r = await db
     .prepare(
-      'INSERT OR IGNORE INTO payments (id,booking_id,provider,status,card_last4,external_id,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)',
+      `INSERT INTO payments (id,booking_id,provider,status,card_last4,external_id,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)
+       ON CONFLICT(external_id) DO NOTHING`,
     )
     .bind(crypto.randomUUID(), p.booking_id, p.provider, p.status, p.card_last4, p.external_id, now.toISOString())
     .run();

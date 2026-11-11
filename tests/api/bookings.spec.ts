@@ -169,3 +169,36 @@ test('cancel less than 24 h ahead: 409 CANCEL_TOO_LATE', async ({ newClient }) =
   expect((await r.json()).error.code).toBe('CANCEL_TOO_LATE');
   expect((await (await c.request.get(`/api/bookings/${id}`)).json()).status).toBe('pending_payment');
 });
+
+const pay = (c: Client, id: string) =>
+  c.request.post(`/api/payments/${id}/simulated`, { data: { cardNumber: '4242424242424242', expiry: '12/30', cvc: '123' } });
+
+// The fixed clock is 2026-12-07T08:00:00Z, so these starts sit exactly at, and just inside, the 24 h limit.
+test('cancel a confirmed booking more than 24 h ahead: cancelled and refunded', async ({ newClient }) => {
+  const c = await newClient();
+  const { id } = await (await book(c, '2026-12-08T08:15:00.000Z', 'tuns-barbati', 'stylist-dorina')).json();
+  expect((await pay(c, id)).status()).toBe(200);
+  const r = await c.request.post(`/api/bookings/${id}/cancel`);
+  expect(r.status()).toBe(200);
+  expect(await r.json()).toEqual({ status: 'cancelled', refunded: true });
+  expect((await (await c.request.get(`/api/bookings/${id}`)).json()).refunded).toBe(true);
+});
+
+test('a cancel at exactly 24 h before the start is allowed', async ({ newClient }) => {
+  const c = await newClient();
+  const { id } = await (await book(c, '2026-12-08T08:00:00.000Z', 'tuns-barbati', 'stylist-iona')).json();
+  expect((await pay(c, id)).status()).toBe(200);
+  const r = await c.request.post(`/api/bookings/${id}/cancel`);
+  expect(r.status()).toBe(200);
+  expect(await r.json()).toEqual({ status: 'cancelled', refunded: true });
+});
+
+test('a cancel 15 minutes inside the 24 h window is CANCEL_TOO_LATE, even when confirmed', async ({ newClient }) => {
+  const c = await newClient();
+  const { id } = await (await book(c, '2026-12-08T07:45:00.000Z', 'tuns-barbati', 'stylist-lucian')).json();
+  expect((await pay(c, id)).status()).toBe(200);
+  const r = await c.request.post(`/api/bookings/${id}/cancel`);
+  expect(r.status()).toBe(409);
+  expect((await r.json()).error.code).toBe('CANCEL_TOO_LATE');
+  expect((await (await c.request.get(`/api/bookings/${id}`)).json()).status).toBe('confirmed');
+});

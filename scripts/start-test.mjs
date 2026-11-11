@@ -1,8 +1,18 @@
 // Builds the web app, applies local migrations, then serves the Worker on 127.0.0.1:8787.
 import { spawnSync, spawn } from 'node:child_process';
-import { copyFileSync, existsSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, readFileSync } from 'node:fs';
 
-if (!existsSync('.dev.vars')) copyFileSync('.dev.vars.example', '.dev.vars');
+if (!existsSync('.dev.vars')) {
+  copyFileSync('.dev.vars.example', '.dev.vars');
+} else {
+  // Older checkouts: add any key the example now has that .dev.vars lacks. Existing values are never changed.
+  const keyOf = (line) => /^\s*([A-Z0-9_]+)\s*=/.exec(line)?.[1];
+  const have = new Set(readFileSync('.dev.vars', 'utf8').split('\n').map(keyOf).filter(Boolean));
+  const missing = readFileSync('.dev.vars.example', 'utf8')
+    .split('\n')
+    .filter((line) => keyOf(line) && !have.has(keyOf(line)));
+  if (missing.length) appendFileSync('.dev.vars', `${readFileSync('.dev.vars', 'utf8').endsWith('\n') ? '' : '\n'}${missing.join('\n')}\n`);
+}
 
 for (const args of [['run', 'build'], ['run', 'db:migrate:local']]) {
   const r = spawnSync('npm', args, { stdio: 'inherit' });

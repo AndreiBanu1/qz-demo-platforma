@@ -115,3 +115,38 @@ export async function setBookingStatus(
       .run();
   }
 }
+
+/**
+ * Confirms a booking only while it is pending_payment and its hold is still running.
+ * One conditional UPDATE, so a concurrent cancel or an expired hold cannot be overwritten.
+ */
+export async function confirmBookingIfPending(db: D1Database, id: string, now: Date): Promise<boolean> {
+  const r = await db
+    .prepare(
+      `UPDATE bookings SET status = 'confirmed'
+       WHERE id = ?1 AND status = 'pending_payment' AND hold_until > ?2`,
+    )
+    .bind(id, now.toISOString())
+    .run();
+  return r.meta.changes === 1;
+}
+
+/** Cancels a booking only if it is still in `from`, so a concurrent confirm is never overwritten. */
+export async function cancelBookingIfStatus(
+  db: D1Database,
+  id: string,
+  from: BookingStatus,
+  refunded: boolean,
+): Promise<boolean> {
+  const r = await db
+    .prepare("UPDATE bookings SET status = 'cancelled', refunded = ?3 WHERE id = ?1 AND status = ?2")
+    .bind(id, from, refunded ? 1 : 0)
+    .run();
+  return r.meta.changes === 1;
+}
+
+/** Test fixture: moves the hold end to `at`. */
+export async function setHoldUntil(db: D1Database, id: string, at: Date): Promise<boolean> {
+  const r = await db.prepare('UPDATE bookings SET hold_until = ?2 WHERE id = ?1').bind(id, at.toISOString()).run();
+  return r.meta.changes === 1;
+}

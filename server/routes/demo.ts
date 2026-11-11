@@ -2,6 +2,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { now } from '../domain/time';
 import type { Env, Vars } from '../env';
+import { setHoldUntil } from '../db/bookings';
 import { deleteUserByEmail } from '../db/users';
 import { AppError } from '../errors';
 import { resetDatabase } from '../seed/reset';
@@ -41,5 +42,13 @@ demo.post('/fixtures/delete-user', async (c) => {
   await requireToken(c);
   const { email } = await parseBody(c, z.object({ email: z.string().min(1) }));
   await deleteUserByEmail(c.env.DB, email.trim().toLowerCase());
+  return c.body(null, 204);
+});
+
+/** Test-only: ends a booking's hold one second before the current clock, so a test can pay too late. */
+demo.post('/fixtures/expire-hold/:bookingId', async (c) => {
+  await requireToken(c);
+  const at = new Date(now(c.env).getTime() - 1000);
+  if (!(await setHoldUntil(c.env.DB, c.req.param('bookingId'), at))) throw new AppError(404, 'NOT_FOUND');
   return c.body(null, 204);
 });

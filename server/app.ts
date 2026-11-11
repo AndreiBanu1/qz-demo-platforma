@@ -8,6 +8,7 @@ import { sessionMiddleware } from './middleware/session';
 import { auth } from './routes/auth';
 import { bookings } from './routes/bookings';
 import { catalog } from './routes/catalog';
+import { payments } from './routes/payments';
 import { slots } from './routes/slots';
 import { demo } from './routes/demo';
 
@@ -34,6 +35,7 @@ export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
   app.route('/api', catalog);
   app.route('/api', slots);
   app.route('/api', bookings);
+  app.route('/api', payments);
 
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: ERROR_COPY.NOT_FOUND } }, 404));
 
