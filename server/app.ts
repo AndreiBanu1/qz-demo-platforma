@@ -6,6 +6,9 @@ import { securityHeaders } from './middleware/headers';
 import { originCheck } from './middleware/origin';
 import { sessionMiddleware } from './middleware/session';
 import { auth } from './routes/auth';
+import { bookings } from './routes/bookings';
+import { catalog } from './routes/catalog';
+import { slots } from './routes/slots';
 import { demo } from './routes/demo';
 
 export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
@@ -19,10 +22,18 @@ export function createApp(): Hono<{ Bindings: Env; Variables: Vars }> {
   });
   app.use('*', originCheck);
 
+  // Task 10 replaces this with the bug set parsed from the cookie; empty until then.
+  app.use('*', async (c, next) => {
+    c.set('bugs', new Set<string>());
+    await next();
+  });
   app.use('*', sessionMiddleware);
 
   app.route('/__demo', demo);
   app.route('/api', auth);
+  app.route('/api', catalog);
+  app.route('/api', slots);
+  app.route('/api', bookings);
 
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: ERROR_COPY.NOT_FOUND } }, 404));
 

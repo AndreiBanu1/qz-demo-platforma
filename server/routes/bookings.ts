@@ -1,0 +1,119 @@
+import { Hono, type Context } from 'hono';
+import { getBooking, insertBookingIfFree, listBookingsForUser, setBookingStatus, type BookingRow } from '../db/bookings';
+import { getService, getStylist } from '../db/catalog';
+import { depositLei } from '../domain/deposit';
+import { fitsInDay, STEP_MIN } from '../domain/slots';
+import { localParts, now } from '../domain/time';
+import type { Env, SessionUser, Vars } from '../env';
+import { AppError } from '../errors';
+import { parseBody } from '../validate';
+import {
+  createBookingSchema,
+  type BookingDto,
+  type CancelBookingResponse,
+  type CreateBookingResponse,
+} from '../../shared/schemas';
+
+const HOLD_MS = 10 * 60_000;
+const CANCEL_NOTICE_MS = 24 * 60 * 60_000;
+
+type Ctx = Context<{ Bindings: Env; Variables: Vars }>;
+
+export function toBookingDto(r: BookingRow): BookingDto {
+  return {
+    id: r.id,
+    serviceId: r.service_id,
+    stylistId: r.stylist_id,
+    start: r.start_at,
+    end: r.end_at,
+    status: r.status,
+    depositLei: r.deposit_lei,
+    holdUntil: r.hold_until,
+    refunded: r.refunded === 1,
+  };
+}
+
+function requireUser(c: Ctx): SessionUser {
+  const user = c.var.user;
+  if (!user) throw new AppError(401, 'UNAUTHENTICATED');
+  return user;
+}
+
+export const bookings = new Hono<{ Bindings: Env; Variables: Vars }>();
+
+bookings.post('/bookings', async (c) => {
+  const user = requireUser(c);
+  const body = await parseBody(c, createBookingSchema);
+  const [service, stylist] = await Promise.all([
+    getService(c.env.DB, body.serviceId),
+    getStylist(c.env.DB, body.stylistId),
+  ]);
+  if (!service || !stylist) throw new AppError(400, 'VALIDATION');
+
+  const at = now(c.env);
+  const start = new Date(body.start);
+  if (start.getTime() <= at.getTime()) throw new AppError(400, 'VALIDATION');
+  if (start.getTime() % 60_000 !== 0 || localParts(start).minutes % STEP_MIN !== 0) {
+    throw new AppError(400, 'VALIDATION');
+  }
+  // checkEnd is true here; the bug variants (Task 10) read c.var.bugs at this point.
+  if (!fitsInDay(start, service.duration_min, true)) throw new AppError(400, 'VALIDATION');
+
+  const id = crypto.randomUUID();
+  const deposit = depositLei(service.price_lei);
+  const holdUntil = new Date(at.getTime() + HOLD_MS);
+  const ok = await insertBookingIfFree(
+    c.env.DB,
+    {
+      id,
+      userId: user.id,
+      serviceId: service.id,
+      stylistId: stylist.id,
+      start,
+      end: new Date(start.getTime() + service.duration_min * 60_000),
+      depositLei: deposit,
+      holdUntil,
+    },
+    at,
+  );
+  if (!ok) throw new AppError(409, 'SLOT_TAKEN');
+  const res: CreateBookingResponse = {
+    id,
+    status: 'pending_payment',
+    depositLei: deposit,
+    holdUntil: holdUntil.toISOString(),
+  };
+  return c.json(res, 201);
+});
+
+bookings.get('/bookings', async (c) => {
+  const user = requireUser(c);
+  const rows = await listBookingsForUser(c.env.DB, user.id);
+  return c.json({ bookings: rows.map(toBookingDto) });
+});
+
+bookings.get('/bookings/:id', async (c) => {
+  const user = requireUser(c);
+  const row = await getBooking(c.env.DB, c.req.param('id'));
+  // 404 for someone else's booking too, so ids cannot be probed. The idor-booking variant (Task 10) hooks in here.
+  if (!row || (row.user_id !== user.id && user.role !== 'admin')) throw new AppError(404, 'NOT_FOUND');
+  return c.json(toBookingDto(row));
+});
+
+bookings.post('/bookings/:id/cancel', async (c) => {
+  const user = requireUser(c);
+  const row = await getBooking(c.env.DB, c.req.param('id'));
+  if (!row || row.user_id !== user.id) throw new AppError(404, 'NOT_FOUND');
+  if (row.status === 'cancelled') {
+    const same: CancelBookingResponse = { status: 'cancelled', refunded: row.refunded === 1 };
+    return c.json(same);
+  }
+  const at = now(c.env);
+  if (new Date(row.start_at).getTime() - at.getTime() < CANCEL_NOTICE_MS) {
+    throw new AppError(409, 'CANCEL_TOO_LATE');
+  }
+  const refunded = row.status === 'confirmed';
+  await setBookingStatus(c.env.DB, row.id, 'cancelled', refunded);
+  const res: CancelBookingResponse = { status: 'cancelled', refunded };
+  return c.json(res);
+});

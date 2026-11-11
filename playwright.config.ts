@@ -5,6 +5,8 @@ const baseURL = resolveTarget(process.env.TARGET);
 
 export default defineConfig({
   testDir: 'tests',
+  // The API specs share one database, and platform.spec.ts resets it, so files must not run in parallel.
+  workers: 1,
   webServer: {
     command: 'npm run start:test',
     url: 'http://127.0.0.1:8787/__demo/health',
