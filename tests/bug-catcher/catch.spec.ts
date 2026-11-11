@@ -25,8 +25,8 @@ const PAIRS: [BugId, (f: CheckFixtures) => Promise<void>][] = [
 for (const [id, check] of PAIRS) {
   test(`catches ${id}`, async ({ page, request, context, baseURL }) => {
     test.skip(id === 'slow-login' && !isLocalHost(baseURL), 'timing budgets are checked on a local target only');
+    await enableBugsInBrowser(context, [id]); // setup errors are ordinary failures: test.fail() comes after it
     test.fail();
-    await enableBugsInBrowser(context, [id]);
     await check({ page, request, context });
   });
 }

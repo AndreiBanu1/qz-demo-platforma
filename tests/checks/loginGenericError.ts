@@ -14,10 +14,10 @@ export async function loginGenericError({ context }: CheckFixtures): Promise<voi
     const wrong = await api.post('/api/auth/login', {
       data: { email: 'ana@bucla-verde.test', password: 'gresita-total-1' },
     });
-    expect(unknown.status()).toBe(401);
-    expect(wrong.status()).toBe(401);
-    expect((await unknown.json()).error.message).toBe(GENERIC);
-    expect((await wrong.json()).error.message).toBe(GENERIC);
+    expect(unknown.status(), '[check:loginGenericError] unknown email status').toBe(401);
+    expect(wrong.status(), '[check:loginGenericError] wrong password status').toBe(401);
+    expect((await unknown.json()).error.message, '[check:loginGenericError] message for an unknown email').toBe(GENERIC);
+    expect((await wrong.json()).error.message, '[check:loginGenericError] message for a wrong password').toBe(GENERIC);
   } finally {
     await api.dispose();
   }

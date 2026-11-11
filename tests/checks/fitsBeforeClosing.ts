@@ -7,6 +7,6 @@ export async function fitsBeforeClosing({ page }: CheckFixtures): Promise<void> 
   await page.goto('/programare');
   await chooseBooking(page, { service: 'Vopsit complet', stylist: 'Oricine', day: '2026-12-28' });
   const times = await page.getByRole('group', { name: 'Ore libere' }).getByRole('button').allTextContents();
-  expect(times.length).toBeGreaterThan(0);
-  expect(times.at(-1)).toBe('17:00');
+  expect(times.length, '[check:fitsBeforeClosing] no times offered').toBeGreaterThan(0);
+  expect(times.at(-1), '[check:fitsBeforeClosing] last time offered for Vopsit complet').toBe('17:00');
 }

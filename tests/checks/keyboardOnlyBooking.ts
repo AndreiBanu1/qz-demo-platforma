@@ -15,19 +15,19 @@ async function expectVisibleFocus(page: Page): Promise<void> {
     return { name, outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth };
   });
   if (!focus) return;
-  expect(focus.outlineStyle, `no focus outline on ${focus.name}`).not.toBe('none');
-  expect(focus.outlineWidth, `zero-width focus outline on ${focus.name}`).not.toBe('0px');
+  expect(focus.outlineStyle, `[check:keyboardOnlyBooking] no focus outline on ${focus.name}`).not.toBe('none');
+  expect(focus.outlineWidth, `[check:keyboardOnlyBooking] zero-width focus outline on ${focus.name}`).not.toBe('0px');
 }
 
 /** Presses Tab until `target` has focus, checking the focus indicator on every control passed on the way. */
 async function tabTo(page: Page, target: Locator, what: string): Promise<void> {
-  expect(await target.count(), `${what} is not on the page`).toBeGreaterThan(0);
+  expect(await target.count(), `[check:keyboardOnlyBooking] ${what} is not on the page`).toBeGreaterThan(0);
   for (let i = 0; i < 80; i++) {
     await page.keyboard.press('Tab');
     await expectVisibleFocus(page);
     if (await target.first().evaluate((el) => el === document.activeElement)) return;
   }
-  throw new Error(`${what} cannot be reached with the Tab key`);
+  throw new Error(`[check:keyboardOnlyBooking] ${what} cannot be reached with the Tab key`);
 }
 
 /**
@@ -61,7 +61,7 @@ export async function keyboardOnlyBooking({ page, context }: CheckFixtures): Pro
     await expectVisibleFocus(page);
     await page.keyboard.press('Shift+Tab');
     await expectVisibleFocus(page);
-    expect(await stylist.evaluate((el) => el === document.activeElement), 'Shift+Tab returns to the stylist').toBe(true);
+    expect(await stylist.evaluate((el) => el === document.activeElement), '[check:keyboardOnlyBooking] Shift+Tab returns to the stylist').toBe(true);
 
     const hours = page.getByRole('group', { name: 'Ore libere' });
     await expect(hours).toBeVisible();

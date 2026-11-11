@@ -5,7 +5,7 @@ import type { CheckFixtures } from './types';
 async function expectNoViolations(page: Page, label: string): Promise<void> {
   const { violations } = await new AxeBuilder({ page }).analyze();
   const summary = violations.map((v) => `${v.id} (${v.nodes.length}): ${v.help}`);
-  expect(summary, `axe violations on ${label}`).toEqual([]);
+  expect(summary, `[check:axeBooking] axe violations on ${label}`).toEqual([]);
 }
 
 /** Zero axe violations on the home page, the booking page after choosing a service, and both account forms. */
