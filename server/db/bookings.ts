@@ -68,11 +68,6 @@ export async function listBookingsForUser(db: D1Database, userId: string): Promi
   return r.results;
 }
 
-export async function listAllBookings(db: D1Database): Promise<BookingRow[]> {
-  const r = await db.prepare('SELECT * FROM bookings ORDER BY start_at').all<BookingRow>();
-  return r.results;
-}
-
 /** Busy intervals for one Europe/Bucharest local day (YYYY-MM-DD): active bookings plus blocks. */
 export async function busyFor(db: D1Database, date: string, now: Date): Promise<Busy[]> {
   const window = localDayWindow(date);

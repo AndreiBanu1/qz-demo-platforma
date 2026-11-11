@@ -5,7 +5,6 @@ import {
   busyFor,
   getBooking,
   insertBookingIfFree,
-  listAllBookings,
   listBookingsForUser,
   setBookingStatus,
   type NewBooking,
@@ -89,7 +88,7 @@ describe('insertBookingIfFree', () => {
 });
 
 describe('reads', () => {
-  test('getBooking, setBookingStatus and the list functions', async () => {
+  test('getBooking, setBookingStatus and listBookingsForUser', async () => {
     const b = booking({ start: '12:00', min: 30, user: 'u-list' });
     await insertBookingIfFree(env.DB, b, now);
     expect((await getBooking(env.DB, b.id))?.status).toBe('pending_payment');
@@ -98,7 +97,6 @@ describe('reads', () => {
     const row = await getBooking(env.DB, b.id);
     expect(row).toMatchObject({ status: 'cancelled', refunded: 1 });
     expect((await listBookingsForUser(env.DB, 'u-list')).map((x) => x.id)).toEqual([b.id]);
-    expect((await listAllBookings(env.DB)).some((x) => x.id === b.id)).toBe(true);
   });
 
   test('busyFor returns active bookings and blocks of that local day only', async () => {
