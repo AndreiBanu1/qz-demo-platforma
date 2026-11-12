@@ -22,7 +22,8 @@ jobs:
       - run: npm run lint
       - run: npm run test:unit
       - run: npm run test:worker
-      - run: npx playwright install --with-deps chromium
+      - id: browsers
+        run: npx playwright install --with-deps chromium
 
       # The clean suite. Its webServer starts the Worker on 127.0.0.1:8787 with a fixed clock and a fresh local D1.
       - name: Playwright (clean)
@@ -30,13 +31,15 @@ jobs:
 
       # Each catching check again with one planted bug on. Every test is an expected failure.
       - name: Playwright (bug-catcher)
-        if: success() || failure()
+        id: catcher
+        # Runs even when the clean suite fails, as long as the browser is installed.
+        if: (success() || failure()) && steps.browsers.outcome == 'success'
         run: |
           mkdir -p report
           npx playwright test --project=bug-catcher --reporter=json > report/bug-catcher.json
 
       - name: Count planted bugs caught
-        if: success() || failure()
+        if: (success() || failure()) && steps.catcher.outcome != 'skipped'
         run: node scripts/bug-summary.ts
 
       - name: Job summary
