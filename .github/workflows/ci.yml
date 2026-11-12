@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm run test:unit
+      - run: npm run test:worker
+      - run: npx playwright install --with-deps chromium
+
+      # The clean suite. Its webServer starts the Worker on 127.0.0.1:8787 with a fixed clock and a fresh local D1.
+      - name: Playwright (clean)
+        run: npx playwright test --project=chromium-desktop --project=iphone-15 --reporter=list,html
+
+      # Each catching check again with one planted bug on. Every test is an expected failure.
+      - name: Playwright (bug-catcher)
+        if: success() || failure()
+        run: |
+          mkdir -p report
+          npx playwright test --project=bug-catcher --reporter=json > report/bug-catcher.json
+
+      - name: Count planted bugs caught
+        if: success() || failure()
+        run: node scripts/bug-summary.ts
+
+      - name: Job summary
+        if: always()
+        run: |
+          if [ -f report/bugs-caught.json ]; then
+            echo "### $(jq -r .message report/bugs-caught.json) planted bugs caught" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### Planted bugs: no result (bug-catcher did not run)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: report
+          path: report/
+          if-no-files-found: ignore
+
+  pages:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: playwright-report
+          path: site
+      - uses: actions/download-artifact@v8
+        with:
+          name: report
+          path: site
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v5
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: cloudflare-deploy
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Skip without Cloudflare secrets
+        if: env.CLOUDFLARE_API_TOKEN == '' || env.CLOUDFLARE_ACCOUNT_ID == ''
+        run: echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set, so nothing is deployed."
+      - uses: actions/checkout@v7
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+      - uses: actions/setup-node@v7
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Deploy
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        run: |
+          npm ci
+          npm run build
+          npx wrangler d1 migrations apply DB --remote
+          npx wrangler deploy
+      # Read-mostly checks against the public copy: a handful of requests (spec 8).
+      - name: Smoke test the public copy
+        if: env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != ''
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:smoke

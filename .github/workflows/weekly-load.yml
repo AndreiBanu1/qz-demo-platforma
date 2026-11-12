@@ -1,0 +1,34 @@
+name: Weekly load smoke
+
+# A short k6 run against a local copy inside the runner. Never against the public site (spec 9).
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Start the local Worker
+        run: |
+          npm run start:test > worker.log 2>&1 &
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:8787/__demo/health && exit 0
+            sleep 2
+          done
+          cat worker.log
+          exit 1
+      - uses: grafana/setup-k6-action@v1
+      - name: k6 booking day (20 s)
+        run: k6 run -e TARGET=http://127.0.0.1:8787 -e DURATION=20s tests/load/booking-day.js

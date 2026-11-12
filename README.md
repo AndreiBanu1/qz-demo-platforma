@@ -57,6 +57,21 @@ mkdir -p report && npx playwright test --project=bug-catcher --reporter=json > r
 
 It writes `report/bugs-caught.json` and exits with an error unless all six are caught.
 
+Load test with [k6](https://k6.io), against the local copy only (the script refuses any other host). Start
+`npm run start:test` in one terminal, then:
+
+```bash
+k6 run -e TARGET=http://127.0.0.1:8787 tests/load/booking-day.js
+```
+
+It resets the local database, runs 20 users booking and paying for 60 s plus 20 users racing for one slot, and
+fails unless exactly one racer wins, under 1% of requests fail, slot lists stay under 800 ms at p95 and no stylist
+ends up double-booked.
+
+CI (`.github/workflows/ci.yml`) runs all of the above except k6 on every push and pull request, publishes the
+report to GitHub Pages and, on `main`, deploys to Cloudflare and runs the smoke test. A weekly workflow runs a 20 s
+k6 pass against a local copy inside the runner.
+
 Smoke test of the deployed copy (four low-volume checks):
 
 ```bash
