@@ -2,6 +2,13 @@ name = "bucla-verde-demo"
 main = "server/index.ts"
 compatibility_date = "2026-08-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+# Preview URLs would add public hosts outside config/hosts.json.
+preview_urls = false
+
+# Measured on the deployed Worker on 2026-11-12 (README, Known trade-offs).
+[vars]
+PBKDF2_ITERATIONS = "20000"
 
 [assets]
 directory = "web/dist"
@@ -12,8 +19,7 @@ run_worker_first = ["/api/*", "/__demo/*"]
 [[d1_databases]]
 binding = "DB"
 database_name = "bucla-verde"
-# Placeholder: Task 13 replaces this with the real D1 id. Local dev works without it.
-database_id = "REPLACE_IN_TASK_13"
+database_id = "b36862b5-c057-4fe6-b9f6-87f521432ac7"
 migrations_dir = "server/db/migrations"
 
 [triggers]

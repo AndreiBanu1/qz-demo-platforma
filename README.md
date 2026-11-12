@@ -90,6 +90,18 @@ test that catches it, is in [docs/bugs.md](docs/bugs.md): `slow-login`, `login-e
 CPU, and 600,000 iterations would take far longer than that. The Workers runtime also caps PBKDF2 at 100,000
 iterations.
 
+The count was measured on the deployed Worker on 2026-11-12 (`wrangler tail`, CPU time per request):
+
+| Request | CPU time, warm | CPU time, cold start |
+|---|---|---|
+| `POST /api/auth/login` at 20,000 iterations | 6–8 ms | 12 ms |
+| `GET /api/slots` (no hashing) | 2–5 ms | 10 ms |
+
+Hashing adds about 3 ms. Doubling the count would put warm logins at or past the 10 ms limit, so it stays at
+20,000 (`PBKDF2_ITERATIONS` in `wrangler.toml`). Cold starts cost about as much on requests that hash nothing, so
+lowering the count would not remove them. If logins start failing with Cloudflare's CPU-limit error, lower it to
+10,000 and regenerate the seed hashes with `scripts/hash-password.ts`.
+
 This is acceptable here because every account is either a public demo account whose password is printed on the
 login page, or a sign-up with a reserved `.test` or `example.com` address. There is nothing real to protect. Each
 stored hash records its own iteration count, so the count can be raised later without breaking existing accounts.
