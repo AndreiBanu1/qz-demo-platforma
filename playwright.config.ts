@@ -32,7 +32,7 @@ export default defineConfig({
         {
           name: 'chromium-desktop',
           use: { ...devices['Desktop Chrome'] },
-          testIgnore: ['**/tests/unit/**', '**/tests/worker/**', '**/tests/bug-catcher/**'],
+          testIgnore: ['**/tests/unit/**', '**/tests/worker/**', '**/tests/bug-catcher/**', '**/tests/smoke/**'],
         },
         {
           name: 'iphone-15',

@@ -13,7 +13,8 @@
     "test:e2e": "playwright test",
     "start:test": "node scripts/start-test.mjs",
     "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:reset": "rm -rf .wrangler/state && npm run db:migrate:local"
+    "db:reset": "rm -rf .wrangler/state && npm run db:migrate:local",
+    "test:smoke": "TARGET=https://bucla-verde-demo.andreibanu97.workers.dev playwright test tests/smoke"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
